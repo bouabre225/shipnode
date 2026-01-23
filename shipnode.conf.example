@@ -1,0 +1,44 @@
+# ShipNode Configuration File
+# Copy this to shipnode.conf and customize for your project
+
+# ============================================
+# App Type
+# ============================================
+# Options: "backend" or "frontend"
+# - backend: Node.js app with PM2 process management
+# - frontend: Static files (React, Vue, etc.)
+APP_TYPE=backend
+
+# ============================================
+# SSH Connection
+# ============================================
+SSH_USER=root
+SSH_HOST=your-server-ip
+SSH_PORT=22
+
+# ============================================
+# Deployment Path
+# ============================================
+# Where your app will be deployed on the server
+REMOTE_PATH=/var/www/myapp
+
+# ============================================
+# Backend-specific Settings
+# ============================================
+# Required if APP_TYPE=backend
+PM2_APP_NAME=myapp
+BACKEND_PORT=3000
+
+# ============================================
+# Frontend-specific Settings (Optional)
+# ============================================
+# Domain name for Caddy configuration
+# Leave empty to skip Caddy setup
+DOMAIN=myapp.com
+
+# ============================================
+# Optional: Build Directory
+# ============================================
+# Frontend build output directory
+# Default: auto-detect (dist, build, or public)
+# BUILD_DIR=dist

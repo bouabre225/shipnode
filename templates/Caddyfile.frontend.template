@@ -1,0 +1,31 @@
+# Caddy Configuration for Frontend (Static Files)
+# Replace DOMAIN and REMOTE_PATH with your values
+
+DOMAIN {
+    root * REMOTE_PATH
+    file_server
+    encode gzip
+
+    # SPA routing: serve index.html for all routes
+    try_files {path} /index.html
+
+    # Cache static assets
+    @static {
+        path *.css *.js *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # Logs
+    log {
+        output file /var/log/caddy/frontend.log
+        format json
+    }
+}

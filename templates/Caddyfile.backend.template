@@ -1,0 +1,34 @@
+# Caddy Configuration for Backend (Reverse Proxy)
+# Replace DOMAIN and APP_PORT with your values
+
+DOMAIN {
+    reverse_proxy localhost:APP_PORT
+    encode gzip
+
+    # Enable CORS (optional, uncomment if needed)
+    # header {
+    #     Access-Control-Allow-Origin *
+    #     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    #     Access-Control-Allow-Headers "Content-Type, Authorization"
+    # }
+
+    # WebSocket support (uncomment if using Socket.io, etc.)
+    # @websockets {
+    #     header Connection *Upgrade*
+    #     header Upgrade websocket
+    # }
+    # reverse_proxy @websockets localhost:APP_PORT
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+    }
+
+    # Logs
+    log {
+        output file /var/log/caddy/APP_NAME.log
+        format json
+    }
+}

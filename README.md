@@ -1,0 +1,425 @@
+# ShipNode
+
+Simple, zero-config deployment tool for Node.js backends and static frontends. Deploy **one app at a time** with a single command.
+
+## Features
+
+- **Single CLI tool** for both backend and frontend deployments
+- **Zero dependencies** (pure bash script)
+- **PM2** process management for backends
+- **Caddy** web server with automatic HTTPS
+- **One-command deployment** with rsync
+- **Simple configuration** via `shipnode.conf`
+
+## Installation
+
+### Easy Install (Recommended)
+
+```bash
+cd ~/Code/Labs/shipnode
+./install.sh
+```
+
+The installer will:
+- Make `shipnode` executable
+- Offer to create a symlink to `/usr/local/bin` (recommended)
+- Or add to your shell config (~/.bashrc or ~/.zshrc)
+
+### Manual Install
+
+```bash
+# Clone or download to ~/Code/Labs/shipnode
+cd ~/Code/Labs/shipnode
+
+# Make executable
+chmod +x shipnode
+
+# Option 1: Symlink (requires sudo)
+sudo ln -s ~/Code/Labs/shipnode/shipnode /usr/local/bin/shipnode
+
+# Option 2: Add to PATH (add this to your ~/.bashrc or ~/.zshrc)
+export PATH="$HOME/Code/Labs/shipnode:$PATH"
+
+# Verify installation
+shipnode help
+```
+
+### Uninstall
+
+```bash
+cd ~/Code/Labs/shipnode
+./uninstall.sh
+```
+
+## Quick Start
+
+### 1. Initialize Project
+
+In your project directory:
+
+```bash
+cd /path/to/your/project
+shipnode init
+```
+
+This creates `shipnode.conf` with default settings.
+
+### 2. Configure
+
+Edit `shipnode.conf`:
+
+```bash
+# For a backend app
+APP_TYPE=backend
+SSH_USER=root
+SSH_HOST=123.45.67.89
+REMOTE_PATH=/var/www/myapp
+PM2_APP_NAME=myapp
+BACKEND_PORT=3000
+DOMAIN=api.myapp.com  # optional
+
+# For a frontend app
+APP_TYPE=frontend
+SSH_USER=root
+SSH_HOST=123.45.67.89
+REMOTE_PATH=/var/www/myapp
+DOMAIN=myapp.com
+```
+
+### 3. Setup Server (First Time)
+
+```bash
+shipnode setup
+```
+
+This installs Node.js, PM2, and Caddy on your server.
+
+### 4. Deploy
+
+```bash
+shipnode deploy
+```
+
+That's it! Your app is live.
+
+## Commands
+
+```bash
+shipnode init              # Create shipnode.conf
+shipnode setup             # Setup server (first time only)
+shipnode deploy            # Deploy app
+shipnode deploy --skip-build  # Deploy without building
+shipnode status            # Check app status
+shipnode logs              # View logs (backend only)
+shipnode restart           # Restart app (backend only)
+shipnode stop              # Stop app (backend only)
+```
+
+## Backend Deployment
+
+For Node.js applications with PM2 process management.
+
+### Requirements
+
+- `package.json` in project root
+- Main entry file (e.g., `index.js`, `server.js`, or as defined in `package.json`)
+- `.env` file (excluded from sync, manage separately)
+
+### What Happens
+
+1. **Syncs files** via rsync (excludes `node_modules`, `.env`, `.git`)
+2. **Installs dependencies** with `npm install --production`
+3. **Starts/reloads** app with PM2
+4. **Configures Caddy** reverse proxy (if DOMAIN is set)
+
+### Example: Express API
+
+```bash
+# Project structure
+myapi/
+├── index.js
+├── package.json
+├── .env
+└── shipnode.conf
+
+# shipnode.conf
+APP_TYPE=backend
+SSH_USER=root
+SSH_HOST=123.45.67.89
+REMOTE_PATH=/var/www/myapi
+PM2_APP_NAME=myapi
+BACKEND_PORT=3000
+DOMAIN=api.myapp.com
+
+# Deploy
+shipnode deploy
+```
+
+Your API is now running at `https://api.myapp.com` with PM2 managing the process.
+
+### Managing Backend
+
+```bash
+shipnode status    # Check if app is running
+shipnode logs      # Stream live logs
+shipnode restart   # Restart app (zero downtime)
+shipnode stop      # Stop app
+```
+
+## Frontend Deployment
+
+For static sites (React, Vue, Svelte, etc.) or pre-built HTML/CSS/JS.
+
+### What Happens
+
+1. **Builds locally** (runs `npm run build` if `package.json` exists)
+2. **Syncs build output** to server (default: `dist/`, auto-detects `build/` or `public/`)
+3. **Configures Caddy** to serve static files (if DOMAIN is set)
+
+### Example: React App
+
+```bash
+# Project structure
+myapp/
+├── src/
+├── dist/           # build output
+├── package.json
+└── shipnode.conf
+
+# shipnode.conf
+APP_TYPE=frontend
+SSH_USER=root
+SSH_HOST=123.45.67.89
+REMOTE_PATH=/var/www/myapp
+DOMAIN=myapp.com
+
+# Deploy
+shipnode deploy
+```
+
+Your site is now live at `https://myapp.com` with automatic HTTPS from Caddy.
+
+### Skip Build
+
+If you've already built locally or want to deploy pre-built files:
+
+```bash
+shipnode deploy --skip-build
+```
+
+## Configuration
+
+### Complete `shipnode.conf` Reference
+
+```bash
+# Required
+APP_TYPE=backend           # "backend" or "frontend"
+SSH_USER=root             # SSH user
+SSH_HOST=123.45.67.89     # Server IP or hostname
+REMOTE_PATH=/var/www/app  # Deployment path on server
+
+# Optional
+SSH_PORT=22               # SSH port (default: 22)
+
+# Backend-specific (required if APP_TYPE=backend)
+PM2_APP_NAME=myapp        # PM2 process name
+BACKEND_PORT=3000         # App listening port
+
+# Optional for both
+DOMAIN=myapp.com          # Domain for Caddy config
+```
+
+## Server Requirements
+
+- Ubuntu/Debian server (18.04+)
+- Root or sudo access
+- SSH access with password or key
+
+ShipNode installs these automatically with `shipnode setup`:
+- Node.js (LTS version)
+- PM2 (for backend apps)
+- Caddy (web server with auto-HTTPS)
+
+## Templates
+
+Use these templates to customize your deployments:
+
+- `templates/ecosystem.config.js.template` - PM2 configuration
+- `templates/Caddyfile.backend.template` - Backend reverse proxy
+- `templates/Caddyfile.frontend.template` - Frontend static server
+
+Copy to your project and customize as needed.
+
+## SSH Keys
+
+For passwordless deployment, add your SSH key to the server:
+
+```bash
+ssh-copy-id -p 22 root@your-server-ip
+```
+
+## Troubleshooting
+
+### "Cannot connect to server"
+
+Check SSH connection manually:
+```bash
+ssh -p 22 root@your-server-ip
+```
+
+### "PM2 not found"
+
+Run setup again:
+```bash
+shipnode setup
+```
+
+### "Build failed"
+
+Check your build command in `package.json`:
+```json
+{
+  "scripts": {
+    "build": "vite build"  // or your build command
+  }
+}
+```
+
+### "Port already in use"
+
+Change `BACKEND_PORT` in `shipnode.conf` or stop the conflicting process:
+```bash
+ssh root@your-server "lsof -ti:3000 | xargs kill"
+```
+
+### Backend not starting
+
+Check PM2 logs:
+```bash
+shipnode logs
+```
+
+Or SSH to server and check:
+```bash
+ssh root@your-server
+pm2 logs myapp
+pm2 status
+```
+
+### Caddy not serving HTTPS
+
+Ensure:
+1. Domain DNS points to server IP
+2. Ports 80 and 443 are open
+3. Check Caddy logs: `ssh root@server "journalctl -u caddy -n 50"`
+
+## Comparison with Other Tools
+
+| Feature | ShipNode | Deployer | PM2 Deploy | Capistrano |
+|---------|----------|----------|------------|------------|
+| Language | Bash | PHP | JS | Ruby |
+| Config | 1 file | Multiple | ecosystem.config.js | Multiple |
+| Learning curve | Minutes | Hours | Hours | Days |
+| Dependencies | None | PHP | Node.js | Ruby |
+| Caddy integration | ✅ | ❌ | ❌ | ❌ |
+| Frontend + Backend | ✅ | ❌ | ✅ | ✅ |
+
+## Examples
+
+### Backend API + Frontend SPA
+
+Deploy them separately with different configs:
+
+```bash
+# Backend
+cd ~/projects/api
+shipnode init
+# Edit shipnode.conf (APP_TYPE=backend, DOMAIN=api.myapp.com)
+shipnode deploy
+
+# Frontend
+cd ~/projects/web
+shipnode init
+# Edit shipnode.conf (APP_TYPE=frontend, DOMAIN=myapp.com)
+shipnode deploy
+```
+
+### Multiple Environments
+
+Use different config files:
+
+```bash
+# Production
+shipnode deploy  # uses shipnode.conf
+
+# Staging (copy config first)
+cp shipnode.conf shipnode.staging.conf
+# Edit shipnode.staging.conf
+# Note: You'll need to modify the script to support this use case
+```
+
+## Advanced Usage
+
+### Custom Build Directory
+
+If your build output is in a non-standard location, create a symlink:
+
+```bash
+ln -s my-custom-dist dist
+```
+
+### Environment Variables
+
+For backends, manage `.env` files separately:
+
+```bash
+# Copy .env to server
+scp .env root@your-server:/var/www/myapp/.env
+
+# Then deploy
+shipnode deploy
+```
+
+### Custom PM2 Config
+
+Copy the template and customize:
+
+```bash
+cp ~/Code/Labs/shipnode/templates/ecosystem.config.js.template ./ecosystem.config.js
+# Edit ecosystem.config.js
+# Deploy will use your custom config
+```
+
+### Multiple Instances
+
+Edit `ecosystem.config.js`:
+
+```javascript
+instances: 4,  // or 'max' for all CPU cores
+exec_mode: 'cluster'
+```
+
+## Security Notes
+
+- ShipNode doesn't handle secrets - manage `.env` files manually
+- Use SSH keys instead of passwords
+- Run as non-root user when possible
+- Enable UFW firewall: `ufw allow 22,80,443/tcp`
+- Keep server updated: `apt update && apt upgrade`
+
+## Contributing
+
+ShipNode is a simple tool intentionally. If you need:
+- Blue-green deployments → Use Kubernetes
+- Complex rollbacks → Use Capistrano
+- CI/CD integration → Use GitHub Actions + ShipNode
+
+But if you find bugs or have simple improvements, contributions welcome!
+
+## License
+
+MIT
+
+## Author
+
+Created for simple, no-nonsense Node.js deployments.

@@ -1,0 +1,440 @@
+#!/usr/bin/env bash
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# ShipNode version
+VERSION="1.0.0"
+
+# Helper functions
+error() {
+    echo -e "${RED}Error: $1${NC}" >&2
+    exit 1
+}
+
+success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
+
+info() {
+    echo -e "${BLUE}→ $1${NC}"
+}
+
+warn() {
+    echo -e "${YELLOW}⚠ $1${NC}"
+}
+
+# Load configuration
+load_config() {
+    if [ ! -f "shipnode.conf" ]; then
+        error "shipnode.conf not found. Run 'shipnode init' first."
+    fi
+
+    # Source the config file
+    set -a
+    source shipnode.conf
+    set +a
+
+    # Validate required variables
+    [ -z "$APP_TYPE" ] && error "APP_TYPE not set in shipnode.conf"
+    [ -z "$SSH_USER" ] && error "SSH_USER not set in shipnode.conf"
+    [ -z "$SSH_HOST" ] && error "SSH_HOST not set in shipnode.conf"
+    [ -z "$REMOTE_PATH" ] && error "REMOTE_PATH not set in shipnode.conf"
+
+    # Set defaults
+    SSH_PORT="${SSH_PORT:-22}"
+
+    # Validate APP_TYPE
+    if [ "$APP_TYPE" != "backend" ] && [ "$APP_TYPE" != "frontend" ]; then
+        error "APP_TYPE must be 'backend' or 'frontend'"
+    fi
+
+    # Backend-specific validation
+    if [ "$APP_TYPE" = "backend" ]; then
+        [ -z "$PM2_APP_NAME" ] && error "PM2_APP_NAME required for backend apps"
+        [ -z "$BACKEND_PORT" ] && error "BACKEND_PORT required for backend apps"
+    fi
+}
+
+# Initialize config file
+cmd_init() {
+    if [ -f "shipnode.conf" ]; then
+        read -p "shipnode.conf already exists. Overwrite? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            info "Aborted."
+            exit 0
+        fi
+    fi
+
+    cat > shipnode.conf << 'EOF'
+# App type: "backend" or "frontend"
+APP_TYPE=backend
+
+# SSH Connection
+SSH_USER=root
+SSH_HOST=your-server-ip
+SSH_PORT=22
+
+# Remote path
+REMOTE_PATH=/var/www/myapp
+
+# Backend-specific
+PM2_APP_NAME=myapp
+BACKEND_PORT=3000
+
+# Frontend-specific (optional)
+DOMAIN=myapp.com
+EOF
+
+    success "Created shipnode.conf"
+    info "Edit shipnode.conf with your server details, then run: shipnode deploy"
+}
+
+# Setup server (first-time)
+cmd_setup() {
+    load_config
+
+    info "Setting up server $SSH_USER@$SSH_HOST..."
+
+    # Check SSH connection
+    if ! ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "exit" 2>/dev/null; then
+        error "Cannot connect to $SSH_USER@$SSH_HOST:$SSH_PORT"
+    fi
+
+    success "SSH connection successful"
+
+    # Install Node.js, PM2, and Caddy
+    info "Installing dependencies on server..."
+
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << 'ENDSSH'
+        set -e
+
+        # Install Node.js (using NodeSource)
+        if ! command -v node &> /dev/null; then
+            echo "Installing Node.js..."
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
+            apt-get install -y nodejs
+        else
+            echo "Node.js already installed: $(node --version)"
+        fi
+
+        # Install PM2
+        if ! command -v pm2 &> /dev/null; then
+            echo "Installing PM2..."
+            npm install -g pm2
+            pm2 startup systemd -u $USER --hp $HOME
+        else
+            echo "PM2 already installed: $(pm2 --version)"
+        fi
+
+        # Install Caddy
+        if ! command -v caddy &> /dev/null; then
+            echo "Installing Caddy..."
+            apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
+            apt update
+            apt install -y caddy
+        else
+            echo "Caddy already installed: $(caddy version)"
+        fi
+ENDSSH
+
+    success "Server setup complete"
+    info "Ready to deploy with: shipnode deploy"
+}
+
+# Deploy application
+cmd_deploy() {
+    load_config
+
+    local SKIP_BUILD=false
+    if [ "$1" = "--skip-build" ]; then
+        SKIP_BUILD=true
+    fi
+
+    info "Deploying $APP_TYPE to $SSH_USER@$SSH_HOST..."
+
+    # Create remote directory
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_PATH"
+
+    if [ "$APP_TYPE" = "backend" ]; then
+        deploy_backend
+    else
+        deploy_frontend "$SKIP_BUILD"
+    fi
+}
+
+deploy_backend() {
+    info "Deploying backend application..."
+
+    # Check if package.json exists
+    [ ! -f "package.json" ] && error "package.json not found in current directory"
+
+    # Rsync application files
+    info "Syncing files to server..."
+    rsync -avz --progress \
+        --exclude 'node_modules' \
+        --exclude '.env' \
+        --exclude '.git' \
+        --exclude '.gitignore' \
+        --exclude 'shipnode.conf' \
+        --exclude '*.log' \
+        -e "ssh -p $SSH_PORT" \
+        ./ "$SSH_USER@$SSH_HOST:$REMOTE_PATH/"
+
+    success "Files synced"
+
+    # Install dependencies and start with PM2
+    info "Installing dependencies and starting app..."
+
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+        cd $REMOTE_PATH
+        npm install --production
+
+        # Start or reload with PM2
+        if pm2 describe $PM2_APP_NAME > /dev/null 2>&1; then
+            pm2 reload $PM2_APP_NAME
+        else
+            pm2 start ecosystem.config.js
+        fi
+
+        pm2 save
+ENDSSH
+
+    success "Backend deployed and running"
+
+    # Optionally configure Caddy
+    if [ -n "$DOMAIN" ]; then
+        configure_caddy_backend
+    fi
+
+    info "Run 'shipnode status' to check app status"
+}
+
+deploy_frontend() {
+    local SKIP_BUILD=$1
+    info "Deploying frontend application..."
+
+    # Build if package.json exists and not skipping
+    if [ -f "package.json" ] && [ "$SKIP_BUILD" = false ]; then
+        info "Building frontend..."
+        npm run build || error "Build failed"
+        success "Build complete"
+    fi
+
+    # Determine build directory
+    local BUILD_DIR="dist"
+    if [ -d "build" ]; then
+        BUILD_DIR="build"
+    elif [ -d "public" ]; then
+        BUILD_DIR="public"
+    fi
+
+    [ ! -d "$BUILD_DIR" ] && error "$BUILD_DIR directory not found"
+
+    # Rsync build directory
+    info "Syncing $BUILD_DIR to server..."
+    rsync -avz --progress --delete \
+        -e "ssh -p $SSH_PORT" \
+        "$BUILD_DIR/" "$SSH_USER@$SSH_HOST:$REMOTE_PATH/"
+
+    success "Frontend deployed"
+
+    # Configure Caddy
+    if [ -n "$DOMAIN" ]; then
+        configure_caddy_frontend
+    else
+        warn "No DOMAIN set. Configure Caddy manually to serve $REMOTE_PATH"
+    fi
+}
+
+configure_caddy_backend() {
+    info "Configuring Caddy reverse proxy for $DOMAIN..."
+
+    local CADDY_CONFIG="/etc/caddy/Caddyfile"
+
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+
+        # Backup existing Caddyfile
+        [ -f $CADDY_CONFIG ] && cp $CADDY_CONFIG ${CADDY_CONFIG}.backup
+
+        # Create Caddyfile
+        cat > $CADDY_CONFIG << 'EOF'
+$DOMAIN {
+    reverse_proxy localhost:$BACKEND_PORT
+    encode gzip
+
+    log {
+        output file /var/log/caddy/${PM2_APP_NAME}.log
+    }
+}
+EOF
+
+        # Reload Caddy
+        caddy reload --config $CADDY_CONFIG
+ENDSSH
+
+    success "Caddy configured for $DOMAIN → localhost:$BACKEND_PORT"
+}
+
+configure_caddy_frontend() {
+    info "Configuring Caddy static file server for $DOMAIN..."
+
+    local CADDY_CONFIG="/etc/caddy/Caddyfile"
+
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+
+        # Backup existing Caddyfile
+        [ -f $CADDY_CONFIG ] && cp $CADDY_CONFIG ${CADDY_CONFIG}.backup
+
+        # Create Caddyfile
+        cat > $CADDY_CONFIG << 'EOF'
+$DOMAIN {
+    root * $REMOTE_PATH
+    file_server
+    encode gzip
+
+    try_files {path} /index.html
+
+    log {
+        output file /var/log/caddy/frontend.log
+    }
+}
+EOF
+
+        # Reload Caddy
+        caddy reload --config $CADDY_CONFIG
+ENDSSH
+
+    success "Caddy configured for $DOMAIN → $REMOTE_PATH"
+}
+
+# Show app status
+cmd_status() {
+    load_config
+
+    if [ "$APP_TYPE" = "backend" ]; then
+        info "Checking PM2 status for $PM2_APP_NAME..."
+        ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 status $PM2_APP_NAME"
+    else
+        info "Checking frontend files..."
+        ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "ls -lh $REMOTE_PATH | head -20"
+    fi
+}
+
+# View logs (backend only)
+cmd_logs() {
+    load_config
+
+    if [ "$APP_TYPE" != "backend" ]; then
+        error "Logs command only available for backend apps"
+    fi
+
+    info "Streaming logs for $PM2_APP_NAME (Ctrl+C to exit)..."
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 logs $PM2_APP_NAME"
+}
+
+# Restart app (backend only)
+cmd_restart() {
+    load_config
+
+    if [ "$APP_TYPE" != "backend" ]; then
+        error "Restart command only available for backend apps"
+    fi
+
+    info "Restarting $PM2_APP_NAME..."
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 restart $PM2_APP_NAME"
+    success "App restarted"
+}
+
+# Stop app (backend only)
+cmd_stop() {
+    load_config
+
+    if [ "$APP_TYPE" != "backend" ]; then
+        error "Stop command only available for backend apps"
+    fi
+
+    info "Stopping $PM2_APP_NAME..."
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 stop $PM2_APP_NAME"
+    success "App stopped"
+}
+
+# Show help
+cmd_help() {
+    cat << EOF
+ShipNode v$VERSION - Simple Node.js Deployment Tool
+
+Usage: shipnode <command> [options]
+
+Commands:
+    init                Create shipnode.conf in current project
+    setup               First-time server setup (Node, PM2, Caddy)
+    deploy              Deploy the application
+    deploy --skip-build Deploy without running build step
+    status              Check application status
+    logs                View application logs (backend only)
+    restart             Restart application (backend only)
+    stop                Stop application (backend only)
+    help                Show this help message
+
+Configuration:
+    Edit shipnode.conf to configure your deployment settings.
+    Supports both backend (Node.js + PM2) and frontend (static files) apps.
+
+Examples:
+    shipnode init       # Create config file
+    shipnode setup      # Setup server (first time)
+    shipnode deploy     # Deploy your app
+
+EOF
+}
+
+# Main command dispatcher
+main() {
+    case "${1:-}" in
+        init)
+            cmd_init
+            ;;
+        setup)
+            cmd_setup
+            ;;
+        deploy)
+            cmd_deploy "$2"
+            ;;
+        status)
+            cmd_status
+            ;;
+        logs)
+            cmd_logs
+            ;;
+        restart)
+            cmd_restart
+            ;;
+        stop)
+            cmd_stop
+            ;;
+        help|--help|-h)
+            cmd_help
+            ;;
+        "")
+            cmd_help
+            ;;
+        *)
+            error "Unknown command: $1\nRun 'shipnode help' for usage."
+            ;;
+    esac
+}
+
+main "$@"
