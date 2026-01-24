@@ -36,16 +36,28 @@ load_config() {
         error "shipnode.conf not found. Run 'shipnode init' first."
     fi
 
-    # Source the config file
+    info "Loading configuration..."
+
+    # Source the config file with error handling
     set -a
-    source shipnode.conf
+    if ! source shipnode.conf 2>&1; then
+        error "Failed to parse shipnode.conf"
+    fi
     set +a
 
     # Validate required variables
-    [ -z "$APP_TYPE" ] && error "APP_TYPE not set in shipnode.conf"
-    [ -z "$SSH_USER" ] && error "SSH_USER not set in shipnode.conf"
-    [ -z "$SSH_HOST" ] && error "SSH_HOST not set in shipnode.conf"
-    [ -z "$REMOTE_PATH" ] && error "REMOTE_PATH not set in shipnode.conf"
+    if [ -z "$APP_TYPE" ]; then
+        error "APP_TYPE not set in shipnode.conf"
+    fi
+    if [ -z "$SSH_USER" ]; then
+        error "SSH_USER not set in shipnode.conf"
+    fi
+    if [ -z "$SSH_HOST" ]; then
+        error "SSH_HOST not set in shipnode.conf"
+    fi
+    if [ -z "$REMOTE_PATH" ]; then
+        error "REMOTE_PATH not set in shipnode.conf"
+    fi
 
     # Set defaults
     SSH_PORT="${SSH_PORT:-22}"
@@ -57,8 +69,12 @@ load_config() {
 
     # Backend-specific validation
     if [ "$APP_TYPE" = "backend" ]; then
-        [ -z "$PM2_APP_NAME" ] && error "PM2_APP_NAME required for backend apps"
-        [ -z "$BACKEND_PORT" ] && error "BACKEND_PORT required for backend apps"
+        if [ -z "$PM2_APP_NAME" ]; then
+            error "PM2_APP_NAME required for backend apps"
+        fi
+        if [ -z "$BACKEND_PORT" ]; then
+            error "BACKEND_PORT required for backend apps"
+        fi
     fi
 }
 
@@ -104,7 +120,7 @@ cmd_setup() {
     info "Setting up server $SSH_USER@$SSH_HOST..."
 
     # Check SSH connection
-    if ! ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "exit" 2>/dev/null; then
+    if ! ssh -o ConnectTimeout=10 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "exit"; then
         error "Cannot connect to $SSH_USER@$SSH_HOST:$SSH_PORT"
     fi
 
@@ -116,11 +132,17 @@ cmd_setup() {
     ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << 'ENDSSH'
         set -e
 
+        # Detect if running as root and set sudo prefix
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
         # Install Node.js (using NodeSource)
         if ! command -v node &> /dev/null; then
             echo "Installing Node.js..."
-            curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-            apt-get install -y nodejs
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO bash -
+            $SUDO apt-get install -y nodejs
         else
             echo "Node.js already installed: $(node --version)"
         fi
@@ -128,7 +150,7 @@ cmd_setup() {
         # Install PM2
         if ! command -v pm2 &> /dev/null; then
             echo "Installing PM2..."
-            npm install -g pm2
+            $SUDO npm install -g pm2
             pm2 startup systemd -u $USER --hp $HOME
         else
             echo "PM2 already installed: $(pm2 --version)"
@@ -137,11 +159,11 @@ cmd_setup() {
         # Install Caddy
         if ! command -v caddy &> /dev/null; then
             echo "Installing Caddy..."
-            apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-            apt update
-            apt install -y caddy
+            $SUDO apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | $SUDO gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+            curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | $SUDO tee /etc/apt/sources.list.d/caddy-stable.list
+            $SUDO apt update
+            $SUDO apt install -y caddy
         else
             echo "Caddy already installed: $(caddy version)"
         fi
@@ -204,7 +226,11 @@ deploy_backend() {
         if pm2 describe $PM2_APP_NAME > /dev/null 2>&1; then
             pm2 reload $PM2_APP_NAME
         else
-            pm2 start ecosystem.config.js
+            if [ -f ecosystem.config.js ]; then
+                pm2 start ecosystem.config.js
+            else
+                pm2 start npm --name "$PM2_APP_NAME" -- start
+            fi
         fi
 
         pm2 save
