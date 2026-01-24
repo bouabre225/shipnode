@@ -125,6 +125,7 @@ That's it! Your app is live.
 ## Commands
 
 ```bash
+# Deployment
 shipnode init                # Create shipnode.conf
 shipnode setup               # Setup server (first time only)
 shipnode deploy              # Deploy app
@@ -137,6 +138,12 @@ shipnode rollback            # Rollback to previous release
 shipnode rollback 2          # Rollback 2 releases back
 shipnode releases            # List all available releases
 shipnode migrate             # Migrate to release structure
+
+# User Management
+shipnode user sync           # Provision users from users.yml
+shipnode user list           # List all provisioned users
+shipnode user remove <user>  # Revoke access for a user
+shipnode mkpasswd            # Generate password hash
 ```
 
 ## Zero-Downtime Deployment
@@ -283,6 +290,255 @@ shipnode rollback
 # Rollback to specific older release
 shipnode rollback 3
 # → Goes back 3 releases
+```
+
+## User Provisioning
+
+ShipNode allows you to provision multiple users on your server with SSH or password authentication. Users can be granted deployment permissions and optional sudo access.
+
+### Quick Start
+
+1. **Generate password hash:**
+```bash
+shipnode mkpasswd
+# Enter password: ********
+# Output: $6$rounds=5000$salt$hash...
+```
+
+2. **Create `users.yml`:**
+```bash
+cp users.yml.example users.yml
+```
+
+3. **Edit `users.yml` with your users:**
+```yaml
+users:
+  - username: alice
+    email: alice@example.com
+    password: "$6$rounds=5000$..."  # From mkpasswd
+
+  - username: bob
+    email: bob@example.com
+    public_key: "ssh-ed25519 AAAAC3... bob@laptop"
+    sudo: true
+```
+
+4. **Sync users to server:**
+```bash
+shipnode user sync
+```
+
+### Configuration File
+
+The `users.yml` file defines all users to provision. Place it in the same directory as `shipnode.conf`.
+
+#### Field Reference
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | Yes | System username (alphanumeric + underscore/dash, max 32 chars) |
+| `email` | string | Yes | User email address |
+| `password` | string | No | Hashed password (use `shipnode mkpasswd`) |
+| `sudo` | boolean | No | Grant sudo access (default: false) |
+| `public_key` | string | No | Single SSH public key (inline) |
+| `public_key_file` | string | No | Path to SSH public key file |
+| `public_keys` | list | No | Multiple SSH public keys |
+
+#### Example Configurations
+
+**Password user (must change on first login):**
+```yaml
+- username: alice
+  email: alice@company.com
+  password: "$6$rounds=5000$saltsalt$hashedpassword..."
+```
+
+**SSH key user with sudo:**
+```yaml
+- username: bob
+  email: bob@company.com
+  public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample... bob@laptop"
+  sudo: true
+```
+
+**CI/CD user (key from file):**
+```yaml
+- username: ci-deploy
+  email: ci@company.com
+  public_key_file: ~/.ssh/ci_deploy.pub
+```
+
+**User with multiple keys:**
+```yaml
+- username: developer
+  email: dev@company.com
+  public_keys:
+    - "ssh-ed25519 AAAAC3... dev@work"
+    - "ssh-ed25519 AAAAC3... dev@home"
+```
+
+**Admin with password + SSH key + sudo:**
+```yaml
+- username: devops
+  email: devops@company.com
+  password: "$6$rounds=5000$..."
+  sudo: true
+  public_key: "ssh-ed25519 AAAAC3... devops@work"
+```
+
+### Commands
+
+**Sync users to server:**
+```bash
+shipnode user sync
+```
+- Creates new users defined in `users.yml`
+- Skips existing users (idempotent)
+- Sets up SSH keys and permissions
+- Forces password change on first login for password users
+
+**List provisioned users:**
+```bash
+shipnode user list
+```
+Shows all users with their auth method, sudo status, and creation date.
+
+**Remove user access:**
+```bash
+shipnode user remove alice
+```
+- Removes user from `shipnode-deployers` and `sudo` groups
+- Locks account
+- Clears SSH keys
+- Does NOT delete the system user
+
+**Generate password hash:**
+```bash
+shipnode mkpasswd
+```
+Prompts for password and generates hash for `users.yml`.
+
+### How It Works
+
+When you run `shipnode user sync`, ShipNode:
+
+1. **Creates users** on the server with specified authentication
+2. **Creates `shipnode-deployers` group** for deployment permissions
+3. **Sets up ACLs** on deployment directory for group access
+4. **Configures sudo** for PM2 commands (all deployers can manage PM2)
+5. **Grants full sudo** to users with `sudo: true`
+6. **Records users** in `.shipnode/users.json` on server
+
+#### Authentication Methods
+
+**Password Authentication:**
+- User created with hashed password
+- Forced to change password on first SSH login (`chage -d 0`)
+- Generate hash with `shipnode mkpasswd`
+
+**SSH Key Authentication:**
+- Keys added to `~/.ssh/authorized_keys`
+- Immediate access upon creation
+- Can specify inline, from file, or multiple keys
+
+### Permissions
+
+All provisioned users are automatically added to the `shipnode-deployers` group with:
+
+- **Read/write/execute** access to deployment directory
+- **PM2 management** via sudo (no password required for `pm2` commands)
+- **ACLs** set on deployment directory and inherited by new files
+
+Users with `sudo: true` additionally get:
+- **Full sudo access** (added to `sudo` group)
+
+### Example Workflow
+
+```bash
+# 1. Generate password for a user
+shipnode mkpasswd
+# Enter password: ********
+# $6$rounds=5000$...
+
+# 2. Create users.yml
+cat > users.yml << EOF
+users:
+  - username: alice
+    email: alice@company.com
+    password: "\$6\$rounds=5000\$..."
+
+  - username: bob
+    email: bob@company.com
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1... bob@laptop"
+    sudo: true
+
+  - username: ci-deploy
+    email: ci@company.com
+    public_key_file: ~/.ssh/ci_deploy.pub
+EOF
+
+# 3. Provision users
+shipnode user sync
+# Created user: alice (password auth, must change on first login)
+# Created user: bob (SSH key added, sudo enabled)
+# Created user: ci-deploy (SSH key added)
+
+# 4. List users
+shipnode user list
+# USERNAME    EMAIL                   AUTH        SUDO    CREATED
+# alice       alice@company.com       password    no      2024-01-24
+# bob         bob@company.com         ssh-key     yes     2024-01-24
+# ci-deploy   ci@company.com          ssh-key     no      2024-01-24
+
+# 5. Test deployment as provisioned user
+# alice logs in and must change password
+ssh alice@server
+# Current password:
+# New password:
+
+# bob can deploy immediately
+ssh bob@server
+cd /var/www/myapp
+git pull && npm install && pm2 reload myapp
+
+# 6. Remove user when no longer needed
+shipnode user remove bob
+# Revoked access for: bob
+```
+
+### Security Notes
+
+- **Password users** must change password on first login
+- **SSH keys** provide immediate, passwordless access
+- **Sudo access** should be granted sparingly
+- **User removal** locks account but preserves system user
+- All users can manage PM2 for deployment purposes
+- Full deployment directory access via ACLs
+
+### Troubleshooting
+
+**"mkpasswd not found":**
+```bash
+sudo apt-get install whois
+```
+
+**"Invalid password hash":**
+Ensure password is wrapped in quotes in `users.yml`:
+```yaml
+password: "$6$rounds=5000$..."  # Correct
+password: $6$rounds=5000$...    # Wrong - shell will interpret $
+```
+
+**User can't access deployment directory:**
+```bash
+# Re-sync to fix permissions
+shipnode user sync
+```
+
+**User can't use PM2:**
+Check if sudoers file exists:
+```bash
+ssh root@server "cat /etc/sudoers.d/shipnode"
 ```
 
 ## Backend Deployment

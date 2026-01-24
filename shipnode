@@ -154,6 +154,539 @@ rollback_to_release() {
     success "Rolled back to $timestamp"
 }
 
+# ============================================================================
+# USER PROVISIONING FUNCTIONS
+# ============================================================================
+
+# Validation helpers
+validate_username() {
+    local username=$1
+    if [[ ! "$username" =~ ^[a-zA-Z0-9_-]+$ ]] || [ ${#username} -gt 32 ]; then
+        return 1
+    fi
+    return 0
+}
+
+validate_password_hash() {
+    local hash=$1
+    # Check if it's a valid crypt format (starts with $)
+    if [[ "$hash" =~ ^\$[0-9]+\$ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+validate_ssh_key() {
+    local key=$1
+    # Check if key starts with valid key type
+    if [[ "$key" =~ ^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521)\ .+ ]]; then
+        return 0
+    fi
+    return 1
+}
+
+# Read SSH key from file
+read_key_file() {
+    local file_path=$1
+    # Expand tilde to home directory
+    file_path="${file_path/#\~/$HOME}"
+
+    if [ ! -f "$file_path" ]; then
+        echo ""
+        return 1
+    fi
+
+    cat "$file_path"
+    return 0
+}
+
+# Parse users.yml file
+parse_users_yaml() {
+    local yaml_file=$1
+
+    if [ ! -f "$yaml_file" ]; then
+        error "users.yml not found in current directory"
+    fi
+
+    # Extract users using awk (simple YAML parser)
+    awk '
+    BEGIN { in_users=0; in_user=0; username=""; email=""; password=""; sudo="false"; }
+
+    /^users:/ { in_users=1; next }
+
+    in_users && /^[^ ]/ { in_users=0 }
+
+    in_users && /^  - username:/ {
+        if (username != "") {
+            print username "|" email "|" password "|" sudo "|" public_key "|" public_key_file "|" public_keys
+        }
+        username=$3
+        email=""
+        password=""
+        sudo="false"
+        public_key=""
+        public_key_file=""
+        public_keys=""
+        in_user=1
+        next
+    }
+
+    in_user && /^    email:/ { email=$2; next }
+    in_user && /^    password:/ {
+        password=$2
+        gsub(/"/, "", password)
+        gsub(/'\''/, "", password)
+        next
+    }
+    in_user && /^    sudo:/ { sudo=$2; next }
+    in_user && /^    public_key:/ {
+        public_key=$0
+        sub(/^    public_key: /, "", public_key)
+        gsub(/"/, "", public_key)
+        gsub(/'\''/, "", public_key)
+        next
+    }
+    in_user && /^    public_key_file:/ {
+        public_key_file=$2
+        gsub(/"/, "", public_key_file)
+        gsub(/'\''/, "", public_key_file)
+        next
+    }
+    in_user && /^    public_keys:/ {
+        in_public_keys=1
+        next
+    }
+    in_public_keys && /^      - / {
+        key=$0
+        sub(/^      - /, "", key)
+        gsub(/"/, "", key)
+        gsub(/'\''/, "", key)
+        if (public_keys == "") {
+            public_keys=key
+        } else {
+            public_keys=public_keys ":::" key
+        }
+        next
+    }
+    in_public_keys && /^    [^ ]/ { in_public_keys=0 }
+
+    END {
+        if (username != "") {
+            print username "|" email "|" password "|" sudo "|" public_key "|" public_key_file "|" public_keys
+        }
+    }
+    ' "$yaml_file"
+}
+
+# Core user management functions
+create_remote_user() {
+    local username=$1
+    local email=$2
+    local password_hash=$3
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" "$password_hash" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+        PASSWORD_HASH=$2
+
+        # Detect sudo prefix
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        # Check if user exists
+        if id "$USERNAME" &>/dev/null; then
+            echo "EXISTS"
+            exit 0
+        fi
+
+        # Create user
+        if [ -n "$PASSWORD_HASH" ]; then
+            $SUDO useradd -m -s /bin/bash -p "$PASSWORD_HASH" "$USERNAME"
+            # Force password change on first login
+            $SUDO chage -d 0 "$USERNAME"
+        else
+            $SUDO useradd -m -s /bin/bash "$USERNAME"
+        fi
+
+        echo "CREATED"
+ENDSSH
+}
+
+setup_user_ssh_dir() {
+    local username=$1
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        USER_HOME=$($SUDO eval echo ~$USERNAME)
+        SSH_DIR="$USER_HOME/.ssh"
+
+        $SUDO mkdir -p "$SSH_DIR"
+        $SUDO touch "$SSH_DIR/authorized_keys"
+        $SUDO chmod 700 "$SSH_DIR"
+        $SUDO chmod 600 "$SSH_DIR/authorized_keys"
+        $SUDO chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
+ENDSSH
+}
+
+add_user_ssh_key() {
+    local username=$1
+    local ssh_key=$2
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" "$ssh_key" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+        SSH_KEY=$2
+
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        USER_HOME=$($SUDO eval echo ~$USERNAME)
+        AUTHORIZED_KEYS="$USER_HOME/.ssh/authorized_keys"
+
+        # Check if key already exists
+        if $SUDO grep -qF "$SSH_KEY" "$AUTHORIZED_KEYS" 2>/dev/null; then
+            exit 0
+        fi
+
+        # Add key
+        echo "$SSH_KEY" | $SUDO tee -a "$AUTHORIZED_KEYS" > /dev/null
+ENDSSH
+}
+
+grant_deploy_permissions() {
+    local username=$1
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" "$REMOTE_PATH" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+        REMOTE_PATH=$2
+
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        # Create shipnode-deployers group if it doesn't exist
+        if ! getent group shipnode-deployers >/dev/null; then
+            $SUDO groupadd shipnode-deployers
+        fi
+
+        # Add user to group
+        $SUDO usermod -aG shipnode-deployers "$USERNAME"
+
+        # Set up ACLs if directory exists
+        if [ -d "$REMOTE_PATH" ]; then
+            # Install acl if not present
+            if ! command -v setfacl &> /dev/null; then
+                $SUDO apt-get update -qq
+                $SUDO apt-get install -y -qq acl
+            fi
+
+            $SUDO setfacl -R -m g:shipnode-deployers:rwx "$REMOTE_PATH" 2>/dev/null || true
+            $SUDO setfacl -R -d -m g:shipnode-deployers:rwx "$REMOTE_PATH" 2>/dev/null || true
+        fi
+
+        # Create sudoers file for PM2 commands
+        if ! [ -f /etc/sudoers.d/shipnode ]; then
+            echo "%shipnode-deployers ALL=(ALL) NOPASSWD: /usr/bin/pm2 *" | $SUDO tee /etc/sudoers.d/shipnode > /dev/null
+            $SUDO chmod 440 /etc/sudoers.d/shipnode
+        fi
+ENDSSH
+}
+
+grant_sudo_access() {
+    local username=$1
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        $SUDO usermod -aG sudo "$USERNAME"
+ENDSSH
+}
+
+revoke_user_access() {
+    local username=$1
+
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash -s "$username" << 'ENDSSH'
+        set -e
+        USERNAME=$1
+
+        SUDO=""
+        if [ "$EUID" -ne 0 ]; then
+            SUDO="sudo"
+        fi
+
+        # Remove from groups
+        $SUDO gpasswd -d "$USERNAME" shipnode-deployers 2>/dev/null || true
+        $SUDO gpasswd -d "$USERNAME" sudo 2>/dev/null || true
+
+        # Lock account
+        $SUDO usermod -L "$USERNAME"
+
+        # Clear SSH keys
+        USER_HOME=$($SUDO eval echo ~$USERNAME)
+        if [ -f "$USER_HOME/.ssh/authorized_keys" ]; then
+            $SUDO rm -f "$USER_HOME/.ssh/authorized_keys"
+        fi
+ENDSSH
+}
+
+# Command functions
+cmd_user_sync() {
+    load_config
+
+    local yaml_file="users.yml"
+
+    if [ ! -f "$yaml_file" ]; then
+        error "users.yml not found. Create it first with user definitions."
+    fi
+
+    info "Syncing users from users.yml..."
+
+    # Ensure .shipnode directory exists
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_PATH/.shipnode"
+
+    # Initialize users.json if it doesn't exist
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        if [ ! -f $REMOTE_PATH/.shipnode/users.json ]; then
+            echo '{"users":[]}' > $REMOTE_PATH/.shipnode/users.json
+        fi
+ENDSSH
+
+    # Parse users.yml
+    local users_data=$(parse_users_yaml "$yaml_file")
+
+    if [ -z "$users_data" ]; then
+        warn "No users found in users.yml"
+        return 0
+    fi
+
+    # Process each user
+    while IFS='|' read -r username email password sudo public_key public_key_file public_keys; do
+        # Validate username
+        if ! validate_username "$username"; then
+            warn "Invalid username: $username (skipping)"
+            continue
+        fi
+
+        # Validate email
+        if [ -z "$email" ]; then
+            warn "No email for user: $username (skipping)"
+            continue
+        fi
+
+        # Validate password if provided
+        if [ -n "$password" ] && ! validate_password_hash "$password"; then
+            warn "Invalid password hash for user: $username (skipping)"
+            continue
+        fi
+
+        # Create user
+        local result=$(create_remote_user "$username" "$email" "$password")
+
+        if [ "$result" = "EXISTS" ]; then
+            info "User already exists: $username (skipping)"
+            continue
+        fi
+
+        local auth_method=""
+
+        # Setup SSH if keys provided
+        if [ -n "$public_key" ] || [ -n "$public_key_file" ] || [ -n "$public_keys" ]; then
+            setup_user_ssh_dir "$username"
+            auth_method="ssh-key"
+
+            # Add inline public key
+            if [ -n "$public_key" ]; then
+                if validate_ssh_key "$public_key"; then
+                    add_user_ssh_key "$username" "$public_key"
+                else
+                    warn "Invalid SSH key for user: $username"
+                fi
+            fi
+
+            # Add key from file
+            if [ -n "$public_key_file" ]; then
+                local key_content=$(read_key_file "$public_key_file")
+                if [ -n "$key_content" ] && validate_ssh_key "$key_content"; then
+                    add_user_ssh_key "$username" "$key_content"
+                else
+                    warn "Invalid or missing SSH key file: $public_key_file"
+                fi
+            fi
+
+            # Add multiple keys
+            if [ -n "$public_keys" ]; then
+                IFS=':::' read -ra KEYS <<< "$public_keys"
+                for key in "${KEYS[@]}"; do
+                    if validate_ssh_key "$key"; then
+                        add_user_ssh_key "$username" "$key"
+                    else
+                        warn "Invalid SSH key in public_keys for user: $username"
+                    fi
+                done
+            fi
+        elif [ -n "$password" ]; then
+            auth_method="password"
+        else
+            warn "User $username has no password or SSH keys (skipping)"
+            continue
+        fi
+
+        # Grant deploy permissions
+        grant_deploy_permissions "$username"
+
+        # Grant sudo if requested
+        if [ "$sudo" = "true" ]; then
+            grant_sudo_access "$username"
+        fi
+
+        # Record user in users.json
+        ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+            cd $REMOTE_PATH/.shipnode
+            CURRENT_DATE=\$(date -Is)
+            jq ".users += [{\"username\":\"$username\",\"email\":\"$email\",\"auth\":\"$auth_method\",\"sudo\":$sudo,\"created_at\":\"\$CURRENT_DATE\"}]" users.json > users.json.tmp
+            mv users.json.tmp users.json
+ENDSSH
+
+        # Report creation
+        local sudo_msg=""
+        [ "$sudo" = "true" ] && sudo_msg=", sudo enabled"
+
+        if [ "$auth_method" = "password" ]; then
+            success "Created user: $username (password auth, must change on first login$sudo_msg)"
+        else
+            success "Created user: $username (SSH key added$sudo_msg)"
+        fi
+
+    done <<< "$users_data"
+
+    success "User sync complete"
+}
+
+cmd_user_list() {
+    load_config
+
+    info "Listing provisioned users..."
+
+    # Check if users.json exists
+    local has_users=$(ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "[ -f $REMOTE_PATH/.shipnode/users.json ] && echo 'yes' || echo 'no'")
+
+    if [ "$has_users" = "no" ]; then
+        warn "No users provisioned yet. Run 'shipnode user sync' first."
+        return 0
+    fi
+
+    # Fetch and display users
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << 'ENDSSH'
+        cd $REMOTE_PATH/.shipnode
+
+        echo ""
+        printf "%-15s %-30s %-12s %-8s %s\n" "USERNAME" "EMAIL" "AUTH" "SUDO" "CREATED"
+        echo "==================================================================================="
+
+        cat users.json | jq -r '.users[] | "\(.username)|\(.email)|\(.auth)|\(.sudo)|\(.created_at)"' | while IFS='|' read -r username email auth sudo created; do
+            # Format created date
+            created_short=$(echo "$created" | cut -d'T' -f1)
+            sudo_text="no"
+            [ "$sudo" = "true" ] && sudo_text="yes"
+
+            printf "%-15s %-30s %-12s %-8s %s\n" "$username" "$email" "$auth" "$sudo_text" "$created_short"
+        done
+
+        echo ""
+        total=$(cat users.json | jq '.users | length')
+        echo "Total: $total users"
+ENDSSH
+}
+
+cmd_user_remove() {
+    local username=$1
+
+    if [ -z "$username" ]; then
+        error "Usage: shipnode user remove <username>"
+    fi
+
+    load_config
+
+    warn "This will revoke access for user: $username"
+    read -p "Continue? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        info "Cancelled"
+        return 0
+    fi
+
+    info "Revoking access for: $username..."
+
+    # Revoke access
+    revoke_user_access "$username"
+
+    # Remove from users.json
+    ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        if [ -f $REMOTE_PATH/.shipnode/users.json ]; then
+            cd $REMOTE_PATH/.shipnode
+            jq ".users = [.users[] | select(.username != \"$username\")]" users.json > users.json.tmp
+            mv users.json.tmp users.json
+        fi
+ENDSSH
+
+    success "Access revoked for: $username"
+}
+
+cmd_mkpasswd() {
+    # Check if mkpasswd is available
+    if ! command -v mkpasswd &> /dev/null; then
+        error "mkpasswd not found. Install it with: sudo apt-get install whois"
+    fi
+
+    info "Generate password hash for users.yml"
+    echo ""
+
+    # Prompt for password (with confirmation)
+    read -sp "Enter password: " password
+    echo
+    read -sp "Confirm password: " password2
+    echo
+
+    if [ "$password" != "$password2" ]; then
+        error "Passwords do not match"
+    fi
+
+    if [ -z "$password" ]; then
+        error "Password cannot be empty"
+    fi
+
+    # Generate hash
+    local hash=$(mkpasswd -m sha-512 "$password")
+
+    echo ""
+    success "Password hash generated:"
+    echo ""
+    echo "$hash"
+    echo ""
+    info "Add this to users.yml:"
+    echo "  password: \"$hash\""
+    echo ""
+}
+
 # Load configuration
 load_config() {
     if [ ! -f "shipnode.conf" ]; then
@@ -958,6 +1491,12 @@ Commands:
     migrate             Migrate existing deployment to release structure
     help                Show this help message
 
+User Management:
+    user sync           Sync users from users.yml to server
+    user list           List all provisioned users
+    user remove <user>  Revoke access for a specific user
+    mkpasswd            Generate password hash for users.yml
+
 Configuration:
     Edit shipnode.conf to configure your deployment settings.
     Supports both backend (Node.js + PM2) and frontend (static files) apps.
@@ -970,6 +1509,10 @@ Zero-Downtime Deployment:
     HEALTH_CHECK_TIMEOUT=30      Health check timeout seconds (default: 30)
     HEALTH_CHECK_RETRIES=3       Number of health check retries (default: 3)
 
+User Provisioning:
+    Create users.yml with user definitions, then run 'shipnode user sync'.
+    Generate password hashes with 'shipnode mkpasswd'.
+
 Examples:
     shipnode init               # Create config file
     shipnode setup              # Setup server (first time)
@@ -979,6 +1522,10 @@ Examples:
     shipnode rollback 2         # Rollback 2 releases back
     shipnode releases           # List all releases
     shipnode migrate            # Migrate to release structure
+    shipnode mkpasswd           # Generate password hash
+    shipnode user sync          # Provision users from users.yml
+    shipnode user list          # List provisioned users
+    shipnode user remove alice  # Revoke access for alice
 
 EOF
 }
@@ -1018,6 +1565,25 @@ main() {
             ;;
         migrate)
             cmd_migrate
+            ;;
+        user)
+            case "${2:-}" in
+                sync)
+                    cmd_user_sync
+                    ;;
+                list)
+                    cmd_user_list
+                    ;;
+                remove)
+                    cmd_user_remove "$3"
+                    ;;
+                *)
+                    error "Unknown user command: ${2:-}\nAvailable: sync, list, remove"
+                    ;;
+            esac
+            ;;
+        mkpasswd)
+            cmd_mkpasswd
             ;;
         help|--help|-h)
             cmd_help
