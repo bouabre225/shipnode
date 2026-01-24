@@ -1,0 +1,14 @@
+{
+  "name": "express-api-example",
+  "version": "1.0.0",
+  "description": "ShipNode Express API example",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "keywords": ["express", "shipnode", "api"],
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
