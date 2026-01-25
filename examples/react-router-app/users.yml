@@ -1,0 +1,17 @@
+# ShipNode User Configuration
+# Sync users to server: shipnode user sync
+
+users:
+    - username: deploy
+    email: deploy@devalade.me
+    authorized_key: "ssh-ed25519 "
+    sudo: true
+
+
+
+
+
+
+
+
+# Generate password hashes: shipnode mkpasswd
