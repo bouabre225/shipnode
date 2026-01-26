@@ -457,9 +457,9 @@ suggest_port() {
     # Match PORT=3000
     if [[ "$scripts" =~ PORT=([0-9]+) ]]; then
         port="${BASH_REMATCH[1]}"
-    # Match :3000 (common in node server.js:3000)
-    elif [[ "$scripts" =~ :([0-9]+) ]]; then
-        port="${BASH_REMATCH[1]}"
+    # Match standalone :3000 while avoiding URLs/timestamps
+    elif [[ "$scripts" =~ (^|[[:space:]])\:([0-9]{2,5})([[:space:]]|$) ]]; then
+        port="${BASH_REMATCH[2]}"
     fi
     
     echo "$port"
@@ -1328,7 +1328,7 @@ prompt_with_validation() {
     done
 }
 
-#=============================================================================
+# =============================================================================
 # INITIALIZATION COMMANDS
 # ============================================================================
 
@@ -1504,8 +1504,8 @@ cmd_init_interactive() {
         echo "Note: Domain is required for frontend deployments (needed for Caddy web server)"
         
         while true; do
-            prompt_with_validation "Domain" "validate_domain" "domain" ""
             echo "  (Your domain name - e.g. myapp.com or www.myapp.com)"
+            prompt_with_validation "Domain" "validate_domain" "domain" ""
             if [ -n "$domain" ]; then
                 break
             fi
