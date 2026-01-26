@@ -3,8 +3,9 @@
 # Build output
 dist/
 
-# Config file (contains sensitive server info)
+# Config files (contain sensitive server info)
 shipnode.conf
+users.yml
 
 # Log files
 *.log
