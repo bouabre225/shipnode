@@ -92,7 +92,7 @@ The **interactive wizard** will guide you through configuration:
 **Example output:**
 ```
 ╔════════════════════════════════════╗
-║  ShipNode Interactive Setup       ║
+║  ShipNode Interactive Setup        ║
 ╚════════════════════════════════════╝
 
 → Detected framework: Express
