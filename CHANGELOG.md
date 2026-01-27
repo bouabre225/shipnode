@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `prompt_with_default()`: Generic prompt with default value support
 - `prompt_with_validation()`: Prompt with automatic validation retry loop
 
+#### Gum UI Framework Integration
+- **Enhanced interactive wizard**: Beautiful UI powered by [charmbracelet/gum](https://github.com/charmbracelet/gum) with graceful fallback to classic bash prompts
+- **Automatic installation**: Gum is automatically installed during `shipnode setup` on supported platforms (Debian/Ubuntu, RedHat/Fedora, Arch, Alpine, macOS)
+- **Multi-platform support**: OS and package manager detection (apt, yum, dnf, brew, apk, pacman)
+- **Non-blocking**: Wizard continues with classic prompts if Gum installation fails
+- **Gum wrappers**: `gum_input()`, `gum_choose()`, `gum_confirm()`, `gum_style()` functions with automatic fallback
+
 ### Changed
 - `shipnode init` now launches interactive wizard by default
 - Added `--non-interactive` flag to preserve v1.1.0 behavior

@@ -5,6 +5,7 @@ Simple, zero-config deployment tool for Node.js backends and static frontends. D
 ## Features
 
 - **Single CLI tool** for both backend and frontend deployments
+- **Enhanced interactive UI** powered by [Gum](https://github.com/charmbracelet/gum) (automatically installed) ✨
 - **Zero-downtime deployments** with atomic release switching
 - **Automatic rollback** on health check failure
 - **Release management** with configurable retention
