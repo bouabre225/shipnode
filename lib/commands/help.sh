@@ -10,6 +10,7 @@ Commands:
     setup                    First-time server setup (Node, PM2, Caddy, jq)
     deploy              Deploy the application
     deploy --skip-build Deploy without running build step
+    doctor              Run pre-flight diagnostic checks
     env                 Upload .env file to server
     status              Check application status
     logs                View application logs (backend only)
@@ -46,6 +47,7 @@ User Provisioning:
 Examples:
     shipnode init               # Create config file
     shipnode setup              # Setup server (first time)
+    shipnode doctor             # Run diagnostics
     shipnode deploy             # Deploy your app
     shipnode env                # Upload .env file to server
     shipnode unlock             # Clear stuck deployment lock

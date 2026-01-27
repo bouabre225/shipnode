@@ -10,6 +10,8 @@ Simple, zero-config deployment tool for Node.js backends and static frontends. D
 - **Automatic rollback** on health check failure
 - **Release management** with configurable retention
 - **Health checks** for backend deployments
+- **Pre-flight diagnostics** with `shipnode doctor` command
+- **Auto-detection** of package managers (npm, yarn, pnpm, bun)
 - **Zero dependencies** (pure bash script)
 - **PM2** process management for backends
 - **Caddy** web server with automatic HTTPS
@@ -194,6 +196,7 @@ That's it! Your app is live.
 # Deployment
 shipnode init                # Create shipnode.conf
 shipnode setup               # Setup server (first time only)
+shipnode doctor              # Run pre-flight diagnostics
 shipnode deploy              # Deploy app
 shipnode deploy --skip-build # Deploy without building
 shipnode status              # Check app status
@@ -211,6 +214,86 @@ shipnode user list           # List all provisioned users
 shipnode user remove <user>  # Revoke access for a user
 shipnode mkpasswd            # Generate password hash
 ```
+
+## Diagnostics
+
+The `shipnode doctor` command runs comprehensive pre-flight checks to ensure your environment is properly configured:
+
+```bash
+shipnode doctor
+```
+
+**What it checks:**
+
+**Local Environment:**
+- ✓ shipnode.conf exists and has valid syntax
+- ✓ Required configuration variables are set
+- ✓ .env file exists (warning if missing)
+- ✓ Node.js is available
+- ✓ package.json exists and package manager is detected
+
+**Configuration Validation:**
+- ✓ HEALTH_CHECK_PATH starts with `/` (if set)
+- ✓ APP_TYPE is valid (backend/frontend)
+
+**SSH Connectivity:**
+- ✓ SSH connection to remote server works
+- ✓ Connection timeout: 5 seconds
+
+**Remote Environment:**
+- ✓ Node.js is installed
+- ✓ PM2 is installed (for backend apps)
+- ✓ Caddy is running
+- ✓ Disk space (warns if <500MB available)
+- ✓ Detected package manager is installed
+
+**Example output:**
+```
+→ Running ShipNode diagnostics...
+
+→ Local environment:
+  ✓ shipnode.conf exists and is valid
+  ✓ .env file exists
+  ✓ node available (v22.21.1)
+  ✓ package.json exists (detected: yarn)
+
+→ Configuration validation:
+  ✓ Configuration values are valid
+
+→ SSH connectivity:
+  ✓ SSH connection successful (user@host:22)
+
+→ Remote environment:
+  ✓ node available (v20.10.0)
+  ✓ PM2 available (5.3.0)
+  ✓ Caddy is running
+  ✓ Disk space OK (15234MB available)
+  ✓ yarn available
+
+✓ All diagnostics passed! System is ready for deployment.
+```
+
+## Package Manager Support
+
+ShipNode automatically detects your package manager from lockfiles:
+
+| Lockfile | Package Manager | Install Command |
+|----------|----------------|----------------|
+| `bun.lockb` or `bun.lock` | bun | `bun install --production` |
+| `pnpm-lock.yaml` | pnpm | `pnpm install --prod` |
+| `yarn.lock` | yarn | `yarn install --production` |
+| (none) | npm | `npm install --production` |
+
+**Manual override:**
+
+Add to `shipnode.conf` to force a specific package manager:
+```bash
+PKG_MANAGER=bun
+```
+
+The detected package manager is used automatically during deployment for:
+- Installing dependencies (`shipnode deploy`)
+- Building the application (`npm run build` → `bun run build`, etc.)
 
 ## Zero-Downtime Deployment
 

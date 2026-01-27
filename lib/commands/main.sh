@@ -9,6 +9,9 @@ main() {
         deploy)
             cmd_deploy "$2"
             ;;
+        doctor)
+            cmd_doctor
+            ;;
         env)
             cmd_env
             ;;

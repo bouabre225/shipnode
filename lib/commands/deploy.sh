@@ -6,6 +6,11 @@ cmd_deploy() {
         SKIP_BUILD=true
     fi
 
+    # Detect package manager
+    PKG_MANAGER=$(detect_pkg_manager)
+    PKG_INSTALL_CMD=$(get_pkg_install_cmd "$PKG_MANAGER")
+    PKG_RUN_CMD=$(get_pkg_run_cmd "$PKG_MANAGER" "build")
+
     info "Deploying $APP_TYPE to $SSH_USER@$SSH_HOST..."
 
     # Create remote directory
@@ -54,7 +59,7 @@ deploy_backend_legacy() {
     ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
         set -e
         cd $REMOTE_PATH
-        npm install --production
+        $PKG_INSTALL_CMD
 
         # Start or reload with PM2
         if pm2 describe $PM2_APP_NAME > /dev/null 2>&1; then
@@ -129,7 +134,7 @@ deploy_backend_zero_downtime() {
         fi
 
         # Install dependencies
-        npm install --production
+        $PKG_INSTALL_CMD
 ENDSSH
 
     success "Release prepared"
@@ -196,7 +201,7 @@ deploy_frontend() {
     # Build if package.json exists and not skipping
     if [ -f "package.json" ] && [ "$SKIP_BUILD" = false ]; then
         info "Building frontend..."
-        npm run build || error "Build failed"
+        $PKG_RUN_CMD || error "Build failed"
         success "Build complete"
     fi
 
