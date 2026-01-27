@@ -448,6 +448,13 @@ parse_package_json() {
         return 1
     fi
     
+    # Validate JSON format first
+    if ! jq empty "$pkg_file" 2>/dev/null; then
+        warn "Invalid JSON format in $pkg_file"
+        echo ""
+        return 1
+    fi
+    
     # Extract dependencies and devDependencies, combine them
     local jq_err
     jq_err=$(mktemp 2>/dev/null || printf "/tmp/shipnode_jq_err.%s" "$$")
