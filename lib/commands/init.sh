@@ -20,6 +20,9 @@ SSH_USER=root
 SSH_HOST=your-server-ip
 SSH_PORT=22
 
+# Node.js version (lts, 18, 20, 22, etc.)
+NODE_VERSION=lts
+
 # Remote path
 REMOTE_PATH=/var/www/myapp
 
@@ -339,6 +342,9 @@ APP_TYPE=$app_type
 SSH_USER=$ssh_user
 SSH_HOST=$ssh_host
 SSH_PORT=$ssh_port
+
+# Node.js version (lts, 18, 20, 22, etc.)
+NODE_VERSION=lts
 
 # Deployment path
 REMOTE_PATH=$remote_path
@@ -785,6 +791,9 @@ APP_TYPE=$app_type
 SSH_USER=$ssh_user
 SSH_HOST=$ssh_host
 SSH_PORT=$ssh_port
+
+# Node.js version (lts, 18, 20, 22, etc.)
+NODE_VERSION=lts
 
 # Deployment path
 REMOTE_PATH=$remote_path

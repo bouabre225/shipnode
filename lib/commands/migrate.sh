@@ -16,7 +16,16 @@ cmd_migrate() {
 
     info "Migrating to release structure..."
 
+    # Detect package manager and verify it's available on remote
+    PKG_MANAGER=$(detect_pkg_manager)
+    if [ "$APP_TYPE" = "backend" ]; then
+        verify_remote_pkg_manager "$PKG_MANAGER"
+    fi
+
     local timestamp=$(generate_release_timestamp)
+
+    # Generate PM2 start command based on package manager
+    local PKG_START_CMD=$(get_pkg_start_cmd "$PKG_MANAGER" "$PM2_APP_NAME")
 
     ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
         set -e
@@ -54,7 +63,7 @@ cmd_migrate() {
                 if [ -f ecosystem.config.js ]; then
                     pm2 start ecosystem.config.js
                 else
-                    pm2 start npm --name "$PM2_APP_NAME" -- start
+                    $PKG_START_CMD
                 fi
                 pm2 save
             fi

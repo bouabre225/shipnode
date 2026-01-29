@@ -29,6 +29,9 @@ deploy_backend() {
     # Check if package.json exists
     [ ! -f "package.json" ] && error "package.json not found in current directory"
 
+    # Verify package manager is installed on remote server
+    verify_remote_pkg_manager "$PKG_MANAGER"
+
     if [ "$ZERO_DOWNTIME" = "true" ]; then
         deploy_backend_zero_downtime
     else
@@ -56,6 +59,9 @@ deploy_backend_legacy() {
     # Install dependencies and start with PM2
     info "Installing dependencies and starting app..."
 
+    # Generate PM2 start command based on package manager
+    local PKG_START_CMD=$(get_pkg_start_cmd "$PKG_MANAGER" "$PM2_APP_NAME")
+
     ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
         set -e
         cd $REMOTE_PATH
@@ -68,7 +74,7 @@ deploy_backend_legacy() {
             if [ -f ecosystem.config.js ]; then
                 pm2 start ecosystem.config.js
             else
-                pm2 start npm --name "$PM2_APP_NAME" -- start
+                $PKG_START_CMD
             fi
         fi
 
@@ -145,6 +151,10 @@ ENDSSH
 
     # Reload PM2
     info "Reloading application..."
+
+    # Generate PM2 start command based on package manager
+    local PKG_START_CMD=$(get_pkg_start_cmd "$PKG_MANAGER" "$PM2_APP_NAME")
+
     ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
         set -e
         cd $REMOTE_PATH/current
@@ -155,7 +165,7 @@ ENDSSH
             if [ -f ecosystem.config.js ]; then
                 pm2 start ecosystem.config.js
             else
-                pm2 start npm --name "$PM2_APP_NAME" -- start
+                $PKG_START_CMD
             fi
         fi
 

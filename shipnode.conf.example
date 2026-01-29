@@ -17,6 +17,15 @@ SSH_HOST=your-server-ip
 SSH_PORT=22
 
 # ============================================
+# Node.js Version
+# ============================================
+# Node.js major version to install on remote server
+# Options: "lts" (recommended), "20", "22", "18", etc.
+# Use major version only (not 22.14.0, just 22)
+# Default: lts
+NODE_VERSION=lts
+
+# ============================================
 # Deployment Path
 # ============================================
 # Where your app will be deployed on the server

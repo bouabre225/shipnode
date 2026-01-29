@@ -20,7 +20,22 @@ cmd_setup() {
     # Install Node.js, PM2, and Caddy
     info "Installing dependencies on server..."
 
+    # Set default Node.js version if not specified
+    local node_version="${NODE_VERSION:-lts}"
+
+    # Extract major version if full version is provided (e.g., 22.14.0 -> 22)
+    if [[ "$node_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        node_version=$(echo "$node_version" | cut -d. -f1)
+        info "Extracted major version: $node_version"
+    elif [[ "$node_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        node_version=$(echo "$node_version" | sed 's/^v//' | cut -d. -f1)
+        info "Extracted major version: $node_version"
+    fi
+
+    info "Node.js version: $node_version"
+
     ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << 'ENDSSH'
+        NODE_VERSION="'"$node_version"'"
         set -e
 
         # Detect if running as root and set sudo prefix
@@ -40,8 +55,8 @@ cmd_setup() {
 
         # Install Node.js (using NodeSource)
         if ! command -v node &> /dev/null; then
-            echo "Installing Node.js..."
-            curl -fsSL https://deb.nodesource.com/setup_lts.x | $SUDO bash -
+            echo "Installing Node.js $NODE_VERSION..."
+            curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | $SUDO bash -
             $SUDO apt-get install -y nodejs
         else
             echo "Node.js already installed: $(node --version)"
