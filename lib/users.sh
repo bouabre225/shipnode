@@ -75,4 +75,108 @@ read_key_file() {
     return 0
 }
 
+# Parse users.yml and output pipe-delimited records
+# Output format: username|email|password|sudo|authorized_key|authorized_key_file|authorized_keys
+parse_users_yaml() {
+    local yaml_file=$1
+    local in_users=false
+    local in_user=false
+    local in_authorized_keys=false
+
+    local username="" email="" password="" sudo="false"
+    local authorized_key="" authorized_key_file="" authorized_keys=""
+
+    while IFS= read -r line; do
+        # Skip comments and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+
+        # Check if we're in users section
+        if [[ "$line" =~ ^users: ]]; then
+            in_users=true
+            continue
+        fi
+
+        # Skip if not in users section
+        [ "$in_users" = false ] && continue
+
+        # Detect start of new user entry
+        if [[ "$line" =~ ^[[:space:]]*-[[:space:]]+username:[[:space:]]*(.+)$ ]]; then
+            # Output previous user if exists
+            if [ -n "$username" ]; then
+                echo "$username|$email|$password|$sudo|$authorized_key|$authorized_key_file|$authorized_keys"
+            fi
+
+            # Reset for new user
+            username="${BASH_REMATCH[1]}"
+            email="" password="" sudo="false"
+            authorized_key="" authorized_key_file="" authorized_keys=""
+            in_user=true
+            in_authorized_keys=false
+            continue
+        fi
+
+        # Continue parsing user fields
+        if [ "$in_user" = true ]; then
+            # username (standalone line after dash)
+            if [[ "$line" =~ ^[[:space:]]+username:[[:space:]]*(.+)$ ]]; then
+                username="${BASH_REMATCH[1]}"
+
+            # email
+            elif [[ "$line" =~ ^[[:space:]]+email:[[:space:]]*(.+)$ ]]; then
+                email="${BASH_REMATCH[1]}"
+
+            # password
+            elif [[ "$line" =~ ^[[:space:]]+password:[[:space:]]*\"(.+)\"$ ]]; then
+                password="${BASH_REMATCH[1]}"
+            elif [[ "$line" =~ ^[[:space:]]+password:[[:space:]]*(.+)$ ]]; then
+                password="${BASH_REMATCH[1]}"
+
+            # sudo
+            elif [[ "$line" =~ ^[[:space:]]+sudo:[[:space:]]*(true|false)$ ]]; then
+                sudo="${BASH_REMATCH[1]}"
+
+            # authorized_key (single key)
+            elif [[ "$line" =~ ^[[:space:]]+authorized_key:[[:space:]]*\"(.+)\"$ ]]; then
+                authorized_key="${BASH_REMATCH[1]}"
+            elif [[ "$line" =~ ^[[:space:]]+authorized_key:[[:space:]]*(.+)$ ]]; then
+                authorized_key="${BASH_REMATCH[1]}"
+
+            # authorized_key_file
+            elif [[ "$line" =~ ^[[:space:]]+authorized_key_file:[[:space:]]*\"(.+)\"$ ]]; then
+                authorized_key_file="${BASH_REMATCH[1]}"
+            elif [[ "$line" =~ ^[[:space:]]+authorized_key_file:[[:space:]]*(.+)$ ]]; then
+                authorized_key_file="${BASH_REMATCH[1]}"
+
+            # authorized_keys (array start)
+            elif [[ "$line" =~ ^[[:space:]]+authorized_keys:[[:space:]]*$ ]]; then
+                in_authorized_keys=true
+                authorized_keys=""
+
+            # authorized_keys array item
+            elif [ "$in_authorized_keys" = true ] && [[ "$line" =~ ^[[:space:]]+-[[:space:]]+\"(.+)\"$ ]]; then
+                local key="${BASH_REMATCH[1]}"
+                [ -n "$authorized_keys" ] && authorized_keys+=":::"
+                authorized_keys+="$key"
+
+            # authorized_keys array item (unquoted)
+            elif [ "$in_authorized_keys" = true ] && [[ "$line" =~ ^[[:space:]]+-[[:space:]]+(.+)$ ]]; then
+                local key="${BASH_REMATCH[1]}"
+                [ -n "$authorized_keys" ] && authorized_keys+=":::"
+                authorized_keys+="$key"
+
+            # End of authorized_keys array (next field or new user)
+            elif [ "$in_authorized_keys" = true ] && [[ "$line" =~ ^[[:space:]]+[a-z_]+: ]]; then
+                in_authorized_keys=false
+            fi
+        fi
+
+    done < "$yaml_file"
+
+    # Output last user
+    if [ -n "$username" ]; then
+        echo "$username|$email|$password|$sudo|$authorized_key|$authorized_key_file|$authorized_keys"
+    fi
+}
+
 # ============================================================================
