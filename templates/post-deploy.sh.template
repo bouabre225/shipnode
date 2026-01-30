@@ -1,0 +1,34 @@
+#!/bin/bash
+# ShipNode Post-Deploy Hook
+# This script runs on the remote server AFTER the deployment completes successfully
+# If this script fails, a warning is logged but the deployment is still considered successful
+#
+# Available environment variables:
+#   RELEASE_PATH    - Path to the current release (symlinked as 'current')
+#   REMOTE_PATH     - Base deployment directory
+#   PM2_APP_NAME    - PM2 process name (backend only)
+#   BACKEND_PORT    - Application port (backend only)
+
+set -e  # Exit on error (but failure won't rollback deployment)
+
+echo "Running post-deploy hook for release: $RELEASE_PATH"
+
+# Example: Clear application cache
+# cd "$RELEASE_PATH" && npm run cache:clear
+
+# Example: Restart external services
+# sudo systemctl restart redis
+
+# Example: Send deployment notification
+# curl -X POST https://hooks.slack.com/services/XXX \
+#   -H 'Content-Type: application/json' \
+#   -d '{"text":"Deployment completed successfully"}'
+
+# Example: Run health check verification
+# curl -sf http://localhost:${BACKEND_PORT}/health || echo "Health check warning"
+
+# Example: Cleanup old logs
+# find /var/log/myapp -name "*.log" -mtime +7 -delete
+
+echo "Post-deploy hook completed successfully"
+exit 0

@@ -56,18 +56,27 @@ deploy_backend_legacy() {
 
     success "Files synced"
 
-    # Install dependencies and start with PM2
-    info "Installing dependencies and starting app..."
+    # Install dependencies
+    info "Installing dependencies..."
+    ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+        cd $REMOTE_PATH
+        $PKG_INSTALL_CMD
+ENDSSH
 
-    # Generate PM2 start command based on package manager
+    # Run pre-deploy hook
+    if ! run_pre_deploy_hook "$REMOTE_PATH"; then
+        error "Pre-deploy hook failed, aborting deployment"
+    fi
+
+    # Start or reload with PM2
+    info "Starting application with PM2..."
     local PKG_START_CMD=$(get_pkg_start_cmd "$PKG_MANAGER" "$PM2_APP_NAME")
 
     ssh -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
         set -e
         cd $REMOTE_PATH
-        $PKG_INSTALL_CMD
 
-        # Start or reload with PM2
         if pm2 describe $PM2_APP_NAME > /dev/null 2>&1; then
             pm2 reload $PM2_APP_NAME
         else
@@ -82,6 +91,9 @@ deploy_backend_legacy() {
 ENDSSH
 
     success "Backend deployed and running"
+
+    # Run post-deploy hook
+    run_post_deploy_hook
 
     # Optionally configure Caddy
     if [ -n "$DOMAIN" ]; then
@@ -145,6 +157,11 @@ ENDSSH
 
     success "Release prepared"
 
+    # Run pre-deploy hook
+    if ! run_pre_deploy_hook "$release_path"; then
+        error "Pre-deploy hook failed, aborting deployment"
+    fi
+
     # Atomic symlink switch
     info "Switching to new release..."
     switch_symlink "$release_path"
@@ -192,6 +209,9 @@ ENDSSH
     # Record successful release
     record_release "$timestamp" "success"
     success "Release $timestamp deployed successfully"
+
+    # Run post-deploy hook
+    run_post_deploy_hook
 
     # Cleanup old releases
     cleanup_old_releases
@@ -243,12 +263,20 @@ deploy_frontend_legacy() {
 
     success "Frontend deployed"
 
+    # Run pre-deploy hook
+    if ! run_pre_deploy_hook "$REMOTE_PATH"; then
+        error "Pre-deploy hook failed, aborting deployment"
+    fi
+
     # Configure Caddy
     if [ -n "$DOMAIN" ]; then
         configure_caddy_frontend
     else
         warn "No DOMAIN set. Configure Caddy manually to serve $REMOTE_PATH"
     fi
+
+    # Run post-deploy hook
+    run_post_deploy_hook
 }
 
 deploy_frontend_zero_downtime() {
@@ -277,6 +305,11 @@ deploy_frontend_zero_downtime() {
 
     success "Files synced to $release_path"
 
+    # Run pre-deploy hook
+    if ! run_pre_deploy_hook "$release_path"; then
+        error "Pre-deploy hook failed, aborting deployment"
+    fi
+
     # Atomic symlink switch
     info "Switching to new release..."
     switch_symlink "$release_path"
@@ -284,6 +317,9 @@ deploy_frontend_zero_downtime() {
     # Record release
     record_release "$timestamp" "success"
     success "Release $timestamp deployed successfully"
+
+    # Run post-deploy hook
+    run_post_deploy_hook
 
     # Cleanup old releases
     cleanup_old_releases

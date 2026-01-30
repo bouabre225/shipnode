@@ -66,15 +66,37 @@ KEEP_RELEASES=5
 # ============================================
 # Enable health checks after deployment
 HEALTH_CHECK_ENABLED=true
-
-# Health check endpoint (should return 200 OK)
 HEALTH_CHECK_PATH=/health
-
-# Timeout for each health check attempt (seconds)
 HEALTH_CHECK_TIMEOUT=30
-
-# Number of health check retries before rollback
 HEALTH_CHECK_RETRIES=3
+
+# ============================================
+# Pre/Post Deploy Hooks
+# ============================================
+# Custom scripts that run on the remote server during deployment
+# 
+# Pre-deploy hook: Runs after code is deployed and dependencies installed,
+# but BEFORE the new release is activated. If this hook fails, the
+# deployment is aborted and rolled back.
+# Use for: database migrations, cache warming, asset compilation
+#
+# Post-deploy hook: Runs after the deployment completes successfully.
+# If this hook fails, a warning is logged but the deployment is still
+# considered successful.
+# Use for: notifications, cache clearing, cleanup tasks
+#
+# Default paths (if not specified):
+#   PRE_DEPLOY_SCRIPT=.shipnode/pre-deploy.sh
+#   POST_DEPLOY_SCRIPT=.shipnode/post-deploy.sh
+#
+# Environment variables available to hooks:
+#   RELEASE_PATH     - Path to the release being deployed
+#   REMOTE_PATH      - Base deployment path on server
+#   PM2_APP_NAME     - PM2 process name (backend only)
+#   BACKEND_PORT     - Application port (backend only)
+#
+#PRE_DEPLOY_SCRIPT=.shipnode/pre-deploy.sh
+#POST_DEPLOY_SCRIPT=.shipnode/post-deploy.sh
 
 # ============================================
 # PostgreSQL Database Setup

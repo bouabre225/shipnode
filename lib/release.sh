@@ -121,4 +121,104 @@ rollback_to_release() {
     success "Rolled back to $timestamp"
 }
 
+# Run pre-deploy hook on remote server
+# Returns: 0 on success, 1 on failure
+run_pre_deploy_hook() {
+    local release_path=$1
+    local hook_script=${PRE_DEPLOY_SCRIPT:-".shipnode/pre-deploy.sh"}
+    
+    # Check if hook script exists locally
+    if [ ! -f "$hook_script" ]; then
+        return 0
+    fi
+    
+    info "Running pre-deploy hook: $hook_script"
+    
+    # Copy hook script to release directory
+    scp -P "$SSH_PORT" "$hook_script" "$SSH_USER@$SSH_HOST:$release_path/.shipnode-pre-deploy.sh" > /dev/null 2>&1
+    
+    # Execute hook on remote server
+    local result
+    result=$(ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+        cd $release_path
+        
+        # Export environment variables for hook
+        export RELEASE_PATH="$release_path"
+        export REMOTE_PATH="$REMOTE_PATH"
+        export PM2_APP_NAME="${PM2_APP_NAME:-}"
+        export BACKEND_PORT="${BACKEND_PORT:-}"
+        
+        # Make hook executable and run it
+        chmod +x .shipnode-pre-deploy.sh
+        if ./.shipnode-pre-deploy.sh; then
+            echo "SUCCESS"
+        else
+            echo "FAILED"
+        fi
+        
+        # Cleanup hook script
+        rm -f .shipnode-pre-deploy.sh
+ENDSSH
+    )
+    
+    if [[ "$result" == *"SUCCESS"* ]]; then
+        success "Pre-deploy hook completed"
+        return 0
+    else
+        error "Pre-deploy hook failed"
+        return 1
+    fi
+}
+
+# Run post-deploy hook on remote server
+# Returns: 0 on success, 1 on failure (but deployment continues)
+run_post_deploy_hook() {
+    local current_path="$REMOTE_PATH/current"
+    local hook_script=${POST_DEPLOY_SCRIPT:-".shipnode/post-deploy.sh"}
+    
+    # Check if hook script exists locally
+    if [ ! -f "$hook_script" ]; then
+        return 0
+    fi
+    
+    info "Running post-deploy hook: $hook_script"
+    
+    # Copy hook script to current directory
+    scp -P "$SSH_PORT" "$hook_script" "$SSH_USER@$SSH_HOST:$current_path/.shipnode-post-deploy.sh" > /dev/null 2>&1
+    
+    # Execute hook on remote server
+    local result
+    result=$(ssh -T -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" bash << ENDSSH
+        set -e
+        cd $current_path
+        
+        # Export environment variables for hook
+        export RELEASE_PATH="$current_path"
+        export REMOTE_PATH="$REMOTE_PATH"
+        export PM2_APP_NAME="${PM2_APP_NAME:-}"
+        export BACKEND_PORT="${BACKEND_PORT:-}"
+        
+        # Make hook executable and run it
+        chmod +x .shipnode-post-deploy.sh
+        if ./.shipnode-post-deploy.sh; then
+            echo "SUCCESS"
+        else
+            echo "FAILED"
+        fi
+        
+        # Cleanup hook script
+        rm -f .shipnode-post-deploy.sh
+ENDSSH
+    )
+    
+    if [[ "$result" == *"SUCCESS"* ]]; then
+        success "Post-deploy hook completed"
+        return 0
+    else
+        warn "Post-deploy hook failed (deployment still successful)"
+        return 1
+    fi
+}
+
 # Setup PostgreSQL database

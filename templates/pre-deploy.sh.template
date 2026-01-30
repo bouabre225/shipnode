@@ -1,0 +1,29 @@
+#!/bin/bash
+# ShipNode Pre-Deploy Hook
+# This script runs on the remote server BEFORE the new release is activated
+# If this script fails (exit code != 0), the deployment will be aborted
+#
+# Available environment variables:
+#   RELEASE_PATH    - Path to the new release being deployed
+#   REMOTE_PATH     - Base deployment directory
+#   PM2_APP_NAME    - PM2 process name (backend only)
+#   BACKEND_PORT    - Application port (backend only)
+
+set -e  # Exit on error
+
+echo "Running pre-deploy hook for release: $RELEASE_PATH"
+
+# Example: Run database migrations
+# cd "$RELEASE_PATH" && npm run migrate
+
+# Example: Run Prisma migrations
+# cd "$RELEASE_PATH" && npx prisma migrate deploy
+
+# Example: Clear temporary cache
+# rm -rf /tmp/myapp-cache/*
+
+# Example: Warm up caches or compile assets
+# cd "$RELEASE_PATH" && npm run build:assets
+
+echo "Pre-deploy hook completed successfully"
+exit 0
