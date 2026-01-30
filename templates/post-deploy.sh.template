@@ -8,8 +8,16 @@
 #   REMOTE_PATH     - Base deployment directory
 #   PM2_APP_NAME    - PM2 process name (backend only)
 #   BACKEND_PORT    - Application port (backend only)
+#   SHARED_ENV_PATH - Path to the server's shared .env file
 
 set -e  # Exit on error (but failure won't rollback deployment)
+
+# Source the server's shared .env to use same variables as the app
+if [ -f "$SHARED_ENV_PATH" ]; then
+    set -a
+    source "$SHARED_ENV_PATH"
+    set +a
+fi
 
 echo "Running post-deploy hook for release: $RELEASE_PATH"
 

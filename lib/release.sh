@@ -148,6 +148,7 @@ run_pre_deploy_hook() {
         export REMOTE_PATH="$REMOTE_PATH"
         export PM2_APP_NAME="${PM2_APP_NAME:-}"
         export BACKEND_PORT="${BACKEND_PORT:-}"
+        export SHARED_ENV_PATH="$REMOTE_PATH/shared/.env"
         
         # Make hook executable and run it
         chmod +x .shipnode-pre-deploy.sh
@@ -198,6 +199,7 @@ run_post_deploy_hook() {
         export REMOTE_PATH="$REMOTE_PATH"
         export PM2_APP_NAME="${PM2_APP_NAME:-}"
         export BACKEND_PORT="${BACKEND_PORT:-}"
+        export SHARED_ENV_PATH="$REMOTE_PATH/shared/.env"
         
         # Make hook executable and run it
         chmod +x .shipnode-post-deploy.sh
