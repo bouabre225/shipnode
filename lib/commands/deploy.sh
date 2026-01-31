@@ -32,6 +32,15 @@ deploy_backend() {
     # Verify package manager is installed on remote server
     verify_remote_pkg_manager "$PKG_MANAGER"
 
+    # Check if port is available on the server
+    if ! check_remote_port_available "$BACKEND_PORT"; then
+        local suggested_port
+        suggested_port=$(suggest_available_port "$BACKEND_PORT")
+        warn "Port $BACKEND_PORT is already in use on $SSH_HOST"
+        warn "Consider updating shipnode.conf: BACKEND_PORT=$suggested_port"
+        warn "Or check running apps with: ssh $SSH_USER@$SSH_HOST -p $SSH_PORT 'ss -tln | grep LISTEN'"
+    fi
+
     if [ "$ZERO_DOWNTIME" = "true" ]; then
         deploy_backend_zero_downtime
     else

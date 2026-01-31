@@ -121,4 +121,84 @@ test_ssh_connection() {
     return 1
 }
 
+# Check if a port is available on the remote server
+# Returns: 0 if available, 1 if in use
+# Args:
+#   $1: Port number to check
+#   $2: SSH user (optional, uses SSH_USER if not provided)
+#   $3: SSH host (optional, uses SSH_HOST if not provided)
+#   $4: SSH port (optional, uses SSH_PORT if not provided)
+check_remote_port_available() {
+    local port=$1
+    local user=${2:-$SSH_USER}
+    local host=${3:-$SSH_HOST}
+    local ssh_port=${4:-$SSH_PORT}
+    
+    if [ -z "$port" ] || [ -z "$user" ] || [ -z "$host" ]; then
+        return 1
+    fi
+    
+    # Check if anything is listening on the port
+    local result
+    result=$(ssh -o ConnectTimeout=5 -p "$ssh_port" "$user@$host" "
+        if command -v ss >/dev/null 2>&1; then
+            ss -tln | grep -q \":$port \"
+        elif command -v netstat >/dev/null 2>&1; then
+            netstat -tln 2>/dev/null | grep -q \":$port \"
+        else
+            # Fallback: try to connect to the port
+            timeout 1 bash -c \"exec 3<>/dev/tcp/127.0.0.1/$port\" 2>/dev/null
+        fi
+        echo \$?
+    " 2>/dev/null)
+    
+    # If result is 0, port is in use
+    if [ "$result" = "0" ]; then
+        return 1  # Port is NOT available
+    fi
+    
+    return 0  # Port is available
+}
+
+# Suggest an available port on the remote server
+# Tries ports in range 3000-3010, then falls back to random high port
+# Args:
+#   $1: Preferred port (optional)
+#   $2: SSH user (optional, uses SSH_USER if not provided)
+#   $3: SSH host (optional, uses SSH_HOST if not provided)
+#   $4: SSH port (optional, uses SSH_PORT if not provided)
+suggest_available_port() {
+    local preferred=$1
+    local user=${2:-$SSH_USER}
+    local host=${3:-$SSH_HOST}
+    local ssh_port=${4:-$SSH_PORT}
+    
+    # If preferred port is provided and available, use it
+    if [ -n "$preferred" ]; then
+        if check_remote_port_available "$preferred" "$user" "$host" "$ssh_port"; then
+            echo "$preferred"
+            return 0
+        fi
+    fi
+    
+    # Try common app ports 3000-3010
+    for port in 3000 3001 3002 3003 3004 3005 3006 3007 3008 3009 3010; do
+        if check_remote_port_available "$port" "$user" "$host" "$ssh_port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+    
+    # Fall back to random high port (8080-8099 range)
+    for port in 8080 8081 8082 8083 8084 8085 8086 8087 8088 8089 8090 8091 8092 8093 8094 8095 8096 8097 8098 8099; do
+        if check_remote_port_available "$port" "$user" "$host" "$ssh_port"; then
+            echo "$port"
+            return 0
+        fi
+    done
+    
+    # Last resort: generate random port in ephemeral range
+    echo $((49152 + RANDOM % 16384))
+}
+
 # Parse users.yml file
