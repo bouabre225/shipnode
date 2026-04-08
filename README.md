@@ -448,6 +448,39 @@ rm .shipnode/templates/ecosystem.config.cjs
 rm .shipnode/templates/Caddyfile.caddy
 ```
 
+## What gets excluded from deployment
+
+ShipNode doesn't sync everything to your server. By default, these are excluded:
+
+- `node_modules/` - rebuilt on the server
+- `.env`, `.env.*` - managed separately via `shipnode env`
+- `.git/` - not needed in production
+- `shipnode.conf`, `shipnode.*.conf` - contains server credentials
+- `.shipnode/` - local hooks and templates
+- `*.log` - log files
+
+**Customize with `.shipnodeignore`:**
+
+```bash
+shipnode eject        # generates .shipnodeignore with sensible defaults
+```
+
+Edit it like `.gitignore` - one pattern per line:
+
+```
+# Exclude test files
+test/
+coverage/
+*.test.ts
+
+# But keep this specific file
+! keep-this.txt
+
+# Exclude Docker files
+Dockerfile
+docker-compose.yml
+```
+
 ## Pre/Post Deploy Hooks
 
 ShipNode auto-generates hook scripts in `.shipnode/` during `shipnode init`. These run on your server during deployment.

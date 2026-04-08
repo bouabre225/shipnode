@@ -96,7 +96,11 @@ cmd_deploy_dry_run() {
         echo "    4. Rsync local files to release directory:"
         echo "       Source: ./"
         echo "       Target: $SSH_USER@$SSH_HOST:$release_path/"
-        echo "       Excludes: node_modules, .env, .git, .gitignore, shipnode.conf, *.log"
+        if [ -f ".shipnodeignore" ]; then
+            echo "       Excludes: from .shipnodeignore ($(grep -cve '^\s*$' -ve '^\s*#' .shipnodeignore 2>/dev/null || echo '?') patterns)"
+        else
+            echo "       Excludes: node_modules, .env, .git, .gitignore, shipnode.conf, *.log (defaults)"
+        fi
         echo ""
         echo "    5. Remote setup commands:"
         echo "       - cd $release_path"
@@ -177,7 +181,11 @@ cmd_deploy_dry_run() {
         echo "    2. Rsync local files:"
         echo "       Source: ./"
         echo "       Target: $SSH_USER@$SSH_HOST:$REMOTE_PATH/"
-        echo "       Excludes: node_modules, .env, .git, .gitignore, shipnode.conf, *.log"
+        if [ -f ".shipnodeignore" ]; then
+            echo "       Excludes: from .shipnodeignore ($(grep -cve '^\s*$' -ve '^\s*#' .shipnodeignore 2>/dev/null || echo '?') patterns)"
+        else
+            echo "       Excludes: node_modules, .env, .git, .gitignore, shipnode.conf, *.log (defaults)"
+        fi
         echo ""
         echo "    3. Remote build commands:"
         if [ "$APP_TYPE" = "backend" ]; then
@@ -325,14 +333,9 @@ deploy_backend_legacy() {
 
     # Rsync application files
     info "Syncing files to server..."
-    remote_rsync -avz --progress \
-        --exclude 'node_modules' \
-        --exclude '.env' \
-        --exclude '.git' \
-        --exclude '.gitignore' \
-        --exclude 'shipnode.conf' \
-        --exclude '*.log' \
-        --exclude '.shipnode' \
+    local rsync_excludes
+    rsync_excludes=$(get_rsync_excludes)
+    remote_rsync -avz --progress $rsync_excludes \
         ./ "$SSH_USER@$SSH_HOST:$REMOTE_PATH/"
 
     success "Files synced"
@@ -426,14 +429,9 @@ deploy_backend_zero_downtime() {
 
     # Rsync to new release directory
     info "Syncing files to release directory..."
-    remote_rsync -avz --progress \
-        --exclude 'node_modules' \
-        --exclude '.env' \
-        --exclude '.git' \
-        --exclude '.gitignore' \
-        --exclude 'shipnode.conf' \
-        --exclude '*.log' \
-        --exclude '.shipnode' \
+    local rsync_excludes
+    rsync_excludes=$(get_rsync_excludes)
+    remote_rsync -avz --progress $rsync_excludes \
         ./ "$SSH_USER@$SSH_HOST:$release_path/"
 
     success "Files synced to $release_path"

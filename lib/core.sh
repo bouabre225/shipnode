@@ -195,6 +195,16 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
     fi
 }
 
+# Build rsync exclude arguments from built-in defaults + .shipnodeignore
+# Returns: string of --exclude flags or --exclude-from flag
+get_rsync_excludes() {
+    if [ -f ".shipnodeignore" ]; then
+        echo "--exclude-from .shipnodeignore"
+    else
+        echo "--exclude node_modules --exclude .env --exclude .git --exclude .gitignore --exclude shipnode.conf --exclude '*.log' --exclude .shipnode"
+    fi
+}
+
 # Template rendering - replaces {{VAR}} placeholders using sed
 # Usage: render_template <template_file> [VAR_NAME VAR_VALUE]...
 # Example: render_template file.tmpl APP_NAME myapp BACKEND_PORT 3000

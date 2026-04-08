@@ -1,9 +1,83 @@
 # ============================================================================
 
+# Generate .shipnodeignore (rsync exclude patterns for deployment)
+generate_shipnodeignore() {
+    if [ -f ".shipnodeignore" ]; then
+        return
+    fi
+
+    cat > .shipnodeignore << 'IGNORE_EOF'
+# ShipNode Deploy Ignore
+# Files matching these patterns won't be synced to the server.
+# One pattern per line. Uses rsync exclude syntax.
+# Remove or comment out lines to include those files in deployment.
+
+# Dependencies (rebuilt on server)
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# ShipNode config (contains server details)
+shipnode.conf
+shipnode.*.conf
+
+# ShipNode local state
+.shipnode/
+
+# Logs
+*.log
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+coverage/
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.yaml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation (keep README)
+docs/
+LICENSE
+IGNORE_EOF
+
+    success "Created .shipnodeignore"
+}
+
 # Generate .shipnode/ directory with smart hook templates
 generate_shipnode_hooks() {
     # Create .shipnode directory
     mkdir -p .shipnode
+
+    # Generate .shipnodeignore if it doesn't exist
+    generate_shipnodeignore
 
     # Detect ORM from package.json
     local orm_info=""

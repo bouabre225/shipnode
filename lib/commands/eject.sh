@@ -29,6 +29,10 @@ cmd_eject() {
         ejected=$((ejected + 1))
     fi
 
+    if [ "$target" = "all" ]; then
+        eject_shipnodeignore
+    fi
+
     echo ""
     if [ $ejected -gt 0 ]; then
         success "Templates ejected to $EJECT_DIR/"
@@ -188,4 +192,75 @@ TEMPLATE
     fi
 
     success "Ejected Caddy (frontend) template → $target"
+}
+
+eject_shipnodeignore() {
+    if [ -f ".shipnodeignore" ]; then
+        warn ".shipnodeignore already exists (skipping)"
+        warn "  Delete it first to reset: rm .shipnodeignore"
+        return
+    fi
+
+    cat > .shipnodeignore << 'IGNORE_EOF'
+# ShipNode Deploy Ignore
+# Files matching these patterns won't be synced to the server.
+# One pattern per line. Uses rsync exclude syntax.
+
+# Dependencies (rebuilt on server)
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# ShipNode config
+shipnode.conf
+shipnode.*.conf
+
+# ShipNode local state
+.shipnode/
+
+# Logs
+*.log
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Tests
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+coverage/
+
+# Docker
+Dockerfile
+docker-compose.yml
+docker-compose.yaml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation
+docs/
+LICENSE
+IGNORE_EOF
+
+    success "Ejected .shipnodeignore → .shipnodeignore"
 }

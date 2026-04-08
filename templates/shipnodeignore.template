@@ -1,0 +1,61 @@
+# ShipNode Deploy Ignore
+# Files and directories matching these patterns won't be synced to the server.
+# One pattern per line. Supports rsync exclude syntax.
+# Docs: https://linux.die.net/man/1/rsync (see --exclude)
+
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# ShipNode config (contains server details)
+shipnode.conf
+shipnode.*.conf
+
+# ShipNode local templates and hooks (already on server or built-in)
+.shipnode/
+
+# Build artifacts (rebuilt on server for backends)
+*.log
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test files
+test/
+tests/
+__tests__/
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+coverage/
+
+# Docker (not needed on server)
+Dockerfile
+docker-compose.yml
+docker-compose.yaml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation
+docs/
+*.md
+!README.md
+LICENSE

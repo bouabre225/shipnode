@@ -63,6 +63,12 @@ Custom Templates:
       {{APP_NAME}}, {{INTERPRETER}}, {{REMOTE_PATH}}, {{BACKEND_PORT}}
       {{DOMAIN}}, {{SERVE_PATH}}
 
+Deploy Excludes:
+    Create .shipnodeignore to control which files are synced to the server.
+    Uses the same syntax as .gitignore (one pattern per line).
+    If .shipnodeignore is missing, built-in defaults are used.
+    Run 'shipnode eject' to generate a starter .shipnodeignore.
+
 Zero-Downtime Deployment:
     ZERO_DOWNTIME=true           Enable atomic deployments (default)
     KEEP_RELEASES=5              Number of releases to keep (default: 5)
