@@ -67,9 +67,22 @@ perform_health_check() {
 
     info "Running health check (${max_retries} retries, ${timeout}s timeout)..."
 
+    _HEALTH_CHECK_ATTEMPTS=0
+    _HEALTH_CHECK_RESPONSE_MS=""
+
     for i in $(seq 1 $max_retries); do
+        _HEALTH_CHECK_ATTEMPTS=$i
+
+        local start_ms
+        start_ms=$(date +%s%3N 2>/dev/null || echo "0")
+
         if remote_exec "timeout $timeout curl -sf http://localhost:$port$path" > /dev/null 2>&1; then
-            success "Health check passed"
+            local end_ms
+            end_ms=$(date +%s%3N 2>/dev/null || echo "0")
+            if [ "$start_ms" != "0" ] && [ "$end_ms" != "0" ]; then
+                _HEALTH_CHECK_RESPONSE_MS=$(( end_ms - start_ms ))
+            fi
+            success "Health check passed (attempt $i)"
             return 0
         fi
         [ $i -lt $max_retries ] && warn "Health check attempt $i failed, retrying..."
@@ -83,10 +96,34 @@ perform_health_check() {
 record_release() {
     local timestamp=$1
     local status=$2
+    local duration="${3:-}"
+    local commit="${4:-}"
+    local health_attempts="${5:-}"
+    local health_response_ms="${6:-}"
+    local previous="${7:-}"
+
+    local extra_fields=""
+    if [ -n "$duration" ]; then
+        extra_fields="$extra_fields, \"duration_seconds\": $duration"
+    fi
+    if [ -n "$commit" ] && [ "$commit" != "" ]; then
+        extra_fields="$extra_fields, \"commit\": \"$commit\""
+    fi
+    if [ -n "$health_attempts" ]; then
+        extra_fields="$extra_fields, \"health_check\": {\"passed\": true, \"attempts\": $health_attempts"
+        if [ -n "$health_response_ms" ]; then
+            extra_fields="$extra_fields, \"response_time_ms\": $health_response_ms"
+        fi
+        extra_fields="$extra_fields }"
+    fi
+    if [ -n "$previous" ]; then
+        extra_fields="$extra_fields, \"previous_release\": \"$previous\""
+    fi
+
     remote_exec bash << ENDSSH
         cd $REMOTE_PATH/.shipnode
         CURRENT_DATE=\$(date -Is)
-        jq ". + [{\"timestamp\":\"$timestamp\",\"date\":\"\$CURRENT_DATE\",\"status\":\"$status\"}]" releases.json > releases.json.tmp
+        jq ". + [{\"timestamp\":\"$timestamp\",\"date\":\"\$CURRENT_DATE\",\"status\":\"$status\"$extra_fields}]" releases.json > releases.json.tmp
         mv releases.json.tmp releases.json
 ENDSSH
 }

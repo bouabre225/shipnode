@@ -1,0 +1,39 @@
+# ShipNode Caddy Configuration (Frontend / Static Files)
+# Customize this file after running 'shipnode eject caddy'
+# Changes here will be preserved across deploys
+#
+# Available variables (auto-replaced on deploy):
+#   {{DOMAIN}}        - Your domain name
+#   {{APP_NAME}}      - Application name (from remote path)
+#   {{SERVE_PATH}}    - Path to static files
+#
+# Docs: https://caddyserver.com/docs/caddyfile
+
+{{DOMAIN}} {
+    root * {{SERVE_PATH}}
+    file_server
+    encode gzip
+
+    # SPA routing: serve index.html for all unmatched routes
+    try_files {path} /index.html
+
+    # Cache static assets aggressively
+    @static {
+        path *.css *.js *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    # Access logs (JSON format)
+    log {
+        output file /var/log/caddy/{{APP_NAME}}.log
+        format json
+    }
+}

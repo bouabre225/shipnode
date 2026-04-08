@@ -1,54 +1,84 @@
 # ShipNode
 
-Simple, zero-config deployment tool for Node.js backends and static frontends. Deploy **one app at a time** with a single command.
+Deploy Node.js apps to your own server with a single command. No Kubernetes, no Docker, no vendor lock-in.
+
+```
+shipnode init && shipnode deploy
+```
+
+## How It Works
+
+ShipNode is a CLI tool that deploys your Node.js backend or static frontend to any Ubuntu/Debian server over SSH. It handles everything: building, syncing files, process management, reverse proxying, and HTTPS.
+
+```
+Your Laptop                    Your Server
+─────────────                  ─────────────
+shipnode deploy  ───rsync──▶   /var/www/myapp/
+                                 ├── current/       ← active release (symlink)
+                                 ├── releases/      ← timestamped versions
+                                 ├── shared/.env    ← persistent config
+                                 └── PM2 + Caddy    ← process + HTTPS
+```
+
+### What gets installed on your server
+
+One command (`shipnode setup`) installs everything:
+
+- **Node.js** - LTS version via NodeSource
+- **PM2** - Process manager (auto-restart, crash recovery)
+- **Caddy** - Web server with automatic HTTPS (Let's Encrypt)
+
+### What happens on every deploy
+
+**Backend (Express, NestJS, Next.js, AdonisJS, etc.):**
+
+1. Syncs your code to the server via rsync (excludes `node_modules`, `.env`, `.git`)
+2. Installs dependencies and builds on the server
+3. Creates a timestamped release directory
+4. Atomically switches a `current` symlink to the new release (zero downtime)
+5. Reloads PM2 gracefully
+6. Runs a health check against your `/health` endpoint
+7. If the health check fails, automatically rolls back to the previous release
+
+**Frontend (React, Vue, Svelte, etc.):**
+
+1. Builds your app locally
+2. Syncs the build output (`dist/`, `build/`, or `public/`) to the server
+3. Atomically switches the symlink
+4. Caddy serves the static files with SPA routing
+
+### What ShipNode manages for you
+
+| Component | Backend | Frontend |
+|-----------|---------|----------|
+| Process management | PM2 (auto-restart, crash recovery) | N/A (static files) |
+| Web server | Caddy reverse proxy | Caddy static file server |
+| HTTPS | Automatic via Caddy/Let's Encrypt | Automatic via Caddy/Let's Encrypt |
+| Environments | `.env` symlinked to each release | N/A |
+| Rollbacks | One command: `shipnode rollback` | One command: `shipnode rollback` |
 
 ## Features
 
-- **Single CLI tool** for both backend and frontend deployments
-- **Enhanced interactive UI** powered by [Gum](https://github.com/charmbracelet/gum) (automatically installed) ✨
-- **Zero-downtime deployments** with atomic release switching
-- **Automatic rollback** on health check failure
-- **Release management** with configurable retention
-- **Health checks** for backend deployments
-- **Pre-flight diagnostics** with `shipnode doctor` command
-- **Security audit** with `shipnode doctor --security`
-- **Server hardening** with `shipnode harden` command
-- **Deploy preview** with `shipnode deploy --dry-run`
-- **CI/CD workflows** with `shipnode ci github` and `shipnode ci env-sync`
-- **Multi-environment support** with `--config` flag for profile configs
-- **Auto-detection** of package managers (npm, yarn, pnpm, bun)
-- **Zero dependencies** (pure bash script)
-- **PM2** process management for backends
-- **Caddy** web server with automatic HTTPS
-- **One-command deployment** with rsync
-- **Simple configuration** via `shipnode.conf`
+- **Zero-downtime deployments** - Atomic symlink switching, never serve a broken build
+- **Automatic rollback** - Health check fails? Instantly reverts to the last working release
+- **Configurable templates** - Eject PM2 and Caddy configs for full customization
+- **Rich status dashboard** - See uptime, CPU, memory, release history at a glance
+- **Deployment tracking** - Every deploy records duration, git commit, health check timing
+- **Security hardening** - One-command firewall, SSH hardening, fail2ban setup
+- **CI/CD ready** - Generate GitHub Actions workflows with `shipnode ci github`
+- **User provisioning** - Manage SSH users with `users.yml`
+- **Pre/post deploy hooks** - Run migrations, clear caches, send notifications
+- **Auto-detection** - Frameworks (Express, NestJS, Next.js, etc.) and package managers (npm, yarn, pnpm, bun)
+- **Multi-environment** - Deploy to staging, production with `--config` or `--profile`
+- **Zero dependencies** - Pure bash, runs anywhere
 
 ## Installation
-
-### For Users (Recommended)
-
-Download and run the self-extracting installer:
 
 ```bash
 curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
 ```
 
-Or download manually:
-
-```bash
-wget https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh
-chmod +x shipnode-installer.sh
-./shipnode-installer.sh
-```
-
-The installer will:
-- Extract ShipNode to `~/.shipnode`
-- Add ShipNode to your PATH via `~/.bashrc` (and `~/.zshrc` if present)
-- Verify the installation
-
-### For Developers
-
-Clone the repository and use the modular version:
+Or clone and run directly:
 
 ```bash
 git clone https://github.com/devalade/shipnode.git
@@ -56,63 +86,19 @@ cd shipnode
 ./shipnode help
 ```
 
-The modular version sources all modules from `lib/` dynamically, making it easy to:
-- Modify individual modules
-- Test changes immediately
-- Contribute to the project
-
-**To build the distributable version:**
-```bash
-./build.sh
-# Creates: shipnode-bundled (single file for distribution)
-```
-
-### Uninstall
-
-**If installed via installer:**
-```bash
-rm -rf ~/.shipnode
-```
-Remove the ShipNode PATH entry from `~/.bashrc` or `~/.zshrc`.
-
-**If cloned from source:**
-```bash
-cd /path/to/shipnode
-./uninstall.sh
-```
-
-See [INSTALL.md](INSTALL.md) for detailed installation instructions.
-
-## What's New in v1.1.0
-
-ShipNode now supports **zero-downtime deployments** with automatic health checks and rollback capabilities! See [CHANGELOG.md](CHANGELOG.md) for full release notes.
-
-Key features:
-- Atomic release-based deployments
-- Automatic health check validation
-- One-command rollback to previous releases
-- Deployment lock to prevent concurrent deploys
-- Configurable release retention
+See [INSTALL.md](INSTALL.md) for details. Uninstall: `rm -rf ~/.shipnode`
 
 ## Quick Start
 
-### 1. Initialize Project
-
-In your project directory:
+### 1. Init
 
 ```bash
 cd /path/to/your/project
 shipnode init
 ```
 
-The **interactive wizard** will guide you through configuration:
+The interactive wizard auto-detects your framework, suggests defaults, and creates `shipnode.conf`:
 
-- Auto-detects your framework (Express, NestJS, AdonisJS, React, React Router, TanStack Router, Next.js, Nuxt, Astro, Remix, Vue, Svelte, SolidJS, Angular, etc.)
-- Suggests smart defaults based on your `package.json`
-- Validates all inputs in real-time
-- Shows configuration summary before creating files
-
-**Example output:**
 ```
 ╔════════════════════════════════════╗
 ║  ShipNode Interactive Setup        ║
@@ -132,7 +118,7 @@ SSH port [22]:
 Remote deployment path [/var/www/myapp]: 
 PM2 process name [myapp]: 
 Application port [3000]: 
-Domain (optional, press Enter to skip): api.myapp.com
+Domain (optional): api.myapp.com
 
 ════════════════════════════════════
 Configuration Summary
@@ -150,758 +136,434 @@ Health Checks: /health (30s timeout, 3 retries)
 Create shipnode.conf with these settings? (Y/n): 
 ```
 
-**For CI/CD or scripts** (non-interactive mode):
+Non-interactive mode for scripts/CI:
+
 ```bash
 shipnode init --non-interactive
 ```
 
-This creates `shipnode.conf` with default settings that you can edit manually.
-
-### 2. Configure (if needed)
-
-The wizard creates an optimized `shipnode.conf`. Only edit manually if using `--non-interactive`:
-
-```bash
-# Example backend configuration
-APP_TYPE=backend
-SSH_USER=root
-SSH_HOST=123.45.67.89
-REMOTE_PATH=/var/www/myapp
-PM2_APP_NAME=myapp
-BACKEND_PORT=3000
-DOMAIN=api.myapp.com  # optional
-
-# Example frontend configuration
-APP_TYPE=frontend
-SSH_USER=root
-SSH_HOST=123.45.67.89
-REMOTE_PATH=/var/www/myapp
-DOMAIN=myapp.com
-```
-
-### 3. Setup Server (First Time)
+### 2. Setup server (first time only)
 
 ```bash
 shipnode setup
 ```
 
-This installs Node.js, PM2, and Caddy on your server.
+Installs Node.js, PM2, and Caddy on your server.
 
-### 4. Deploy
+### 3. Deploy
 
 ```bash
 shipnode deploy
 ```
 
-That's it! Your app is live.
+Your app is live. That's it.
+
+### 4. Check status
+
+```bash
+shipnode status
+```
+
+```
+═══════════════════════════════════════
+  Application Status
+═══════════════════════════════════════
+
+  App:        myapp (backend)
+  URL:        https://api.myapp.com
+  Server:     root@203.0.113.10:22
+
+  PM2:
+    Status:    ● online
+    Uptime:    2d 14h 32m
+    Restarts:  0
+    Instances: 1
+    CPU:       3.2%
+    Memory:    128MB
+    Port:      3000
+
+  Release:
+    Current:   20260408143022 (2 hours ago)
+    Previous:  20260408120000
+
+  Disk:
+    Total:     48GB
+    Used:      12GB (25%)
+    Releases:  1.2GB (3 releases)
+
+═══════════════════════════════════════
+```
 
 ## Commands
 
 ```bash
-# Deployment
-shipnode init                          # Create shipnode.conf (interactive wizard)
-shipnode init --non-interactive        # Create shipnode.conf with defaults
-shipnode init --print                  # Print config without writing file
-shipnode setup                         # Setup server (first time only)
-shipnode doctor                        # Run pre-flight diagnostics
-shipnode doctor --security             # Run security audit
-shipnode deploy                        # Deploy app
-shipnode deploy --skip-build           # Deploy without building
-shipnode deploy --dry-run              # Preview deployment steps
-shipnode deploy --config shipnode.staging.conf  # Use custom config
-shipnode status                        # Check app status
-shipnode logs                          # View logs (backend only)
-shipnode restart                       # Restart app (backend only)
-shipnode stop                          # Stop app (backend only)
+# Setup
+shipnode init                          # Interactive config wizard
+shipnode init --non-interactive        # Non-interactive (for CI/CD)
+shipnode init --template express       # Use framework preset
+shipnode init --print                  # Print config without writing
+shipnode setup                         # Install Node.js, PM2, Caddy on server
+
+# Deploy
+shipnode deploy                        # Deploy your app
+shipnode deploy --skip-build           # Skip build step
+shipnode deploy --dry-run              # Preview without deploying
+
+# Monitor
+shipnode status                        # Rich status dashboard
+shipnode logs                          # Stream live PM2 logs
+shipnode metrics                       # Real-time CPU/memory monitor
+shipnode releases                      # List all releases with history
+
+# Manage
 shipnode rollback                      # Rollback to previous release
 shipnode rollback 2                    # Rollback 2 releases back
-shipnode releases                      # List all available releases
-shipnode migrate                       # Migrate to release structure
+shipnode restart                       # Restart app (graceful)
+shipnode stop                          # Stop app
+shipnode unlock                        # Clear stuck deployment lock
+
+# Customize
+shipnode eject                         # Eject PM2 + Caddy templates
+shipnode eject pm2                     # Eject only PM2 template
+shipnode eject caddy                   # Eject only Caddy template
+shipnode config                        # Show resolved config values
+shipnode config validate               # Validate config without deploying
+
+# Environment
+shipnode env                           # Upload .env to server
+
+# Diagnostics
+shipnode doctor                        # Pre-flight checks
+shipnode doctor --security             # Security audit
+shipnode harden                        # Server hardening wizard
 
 # CI/CD
 shipnode ci github                     # Generate GitHub Actions workflow
 shipnode ci env-sync                   # Sync config to GitHub secrets
-shipnode ci env-sync --all             # Sync config and .env to secrets
-
-# Security
-shipnode harden                        # Apply server security hardening
-shipnode doctor --security             # Run security posture audit
+shipnode ci env-sync --all             # Sync config + .env to secrets
 
 # User Management
 shipnode user sync                     # Provision users from users.yml
-shipnode user list                     # List all provisioned users
-shipnode user remove <user>            # Revoke access for a user
+shipnode user list                     # List provisioned users
+shipnode user remove <user>            # Revoke user access
 shipnode mkpasswd                      # Generate password hash
+
+# Multi-environment
+shipnode deploy --config shipnode.staging.conf   # Custom config
+shipnode deploy --profile staging                # Shorthand: shipnode.staging.conf
 ```
 
-## Diagnostics
+## Zero-Downtime Deployments
 
-The `shipnode doctor` command runs comprehensive pre-flight checks to ensure your environment is properly configured:
+ShipNode uses the same pattern as Capistrano: timestamped releases with an atomic symlink switch.
+
+### Directory structure on your server
+
+```
+/var/www/myapp/
+├── current -> releases/20260408143022/   ← always points to active release
+├── releases/
+│   ├── 20260408120000/                   ← previous release (for rollback)
+│   └── 20260408143022/                   ← current release
+├── shared/
+│   ├── .env                              ← persistent env vars (symlinked into each release)
+│   └── ecosystem.config.cjs              ← PM2 config
+└── .shipnode/
+    ├── releases.json                     ← deployment history with metadata
+    └── deploy.lock                       ← prevents concurrent deploys
+```
+
+### Deployment lifecycle
+
+```
+  1. Acquire lock
+  2. Create release directory    releases/20260408143022/
+  3. rsync files                 your laptop → server
+  4. Link shared .env            shared/.env → releases/.../ .env
+  5. Install dependencies        npm install
+  6. Build (if needed)           npm run build
+  7. Run pre-deploy hook         migrations, cache warm, etc.
+  8. Atomic symlink switch       current → releases/20260408143022/
+  9. Reload PM2                  graceful reload, zero downtime
+ 10. Health check                GET localhost:3000/health (3 retries)
+ 11. Record release              timestamp, git commit, duration, health data
+ 12. Run post-deploy hook        notifications, cache clear, etc.
+ 13. Cleanup old releases        keep last 5 by default
+ 14. Release lock
+```
+
+If step 10 fails, ShipNode immediately:
+- Switches symlink back to the previous release
+- Reloads PM2
+- Records the failed deployment
+
+### Rollback
 
 ```bash
-shipnode doctor
+shipnode rollback       # previous release
+shipnode rollback 2     # 2 releases back
+shipnode releases       # see all releases first
 ```
 
-**What it checks:**
+### Deployment history
 
-**Local Environment:**
-- ✓ shipnode.conf exists and has valid syntax
-- ✓ Required configuration variables are set
-- ✓ .env file exists (warning if missing)
-- ✓ Node.js is available
-- ✓ package.json exists and package manager is detected
+Every deployment is recorded in `.shipnode/releases.json` with rich metadata:
 
-**Configuration Validation:**
-- ✓ HEALTH_CHECK_PATH starts with `/` (if set)
-- ✓ APP_TYPE is valid (backend/frontend)
-
-**SSH Connectivity:**
-- ✓ SSH connection to remote server works
-- ✓ Connection timeout: 5 seconds
-
-**Remote Environment:**
-- ✓ Node.js is installed
-- ✓ PM2 is installed (for backend apps)
-- ✓ Caddy is running
-- ✓ Disk space (warns if <500MB available)
-- ✓ Detected package manager is installed
-
-**Example output:**
+```json
+{
+  "timestamp": "20260408143022",
+  "date": "2026-04-08T14:30:22Z",
+  "status": "success",
+  "duration_seconds": 45,
+  "commit": "abc1234",
+  "previous_release": "20260408120000",
+  "health_check": {
+    "passed": true,
+    "attempts": 1,
+    "response_time_ms": 23
+  }
+}
 ```
-→ Running ShipNode diagnostics...
 
-→ Local environment:
-  ✓ shipnode.conf exists and is valid
-  ✓ .env file exists
-  ✓ node available (v22.21.1)
-  ✓ package.json exists (detected: yarn)
+### Health checks
 
-→ Configuration validation:
-  ✓ Configuration values are valid
+Add a `/health` endpoint to your backend:
 
-→ SSH connectivity:
-  ✓ SSH connection successful (user@host:22)
+```javascript
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+```
 
-→ Remote environment:
-  ✓ node available (v20.10.0)
-  ✓ PM2 available (5.3.0)
-  ✓ Caddy is running
-  ✓ Disk space OK (15234MB available)
-  ✓ yarn available
+Configure in `shipnode.conf`:
 
-✓ All diagnostics passed! System is ready for deployment.
+```bash
+HEALTH_CHECK_ENABLED=true       # default: true
+HEALTH_CHECK_PATH=/health       # default: /health
+HEALTH_CHECK_TIMEOUT=30         # seconds per attempt (default: 30)
+HEALTH_CHECK_RETRIES=3          # attempts before rollback (default: 3)
+```
+
+## Customizing Templates
+
+ShipNode generates PM2 and Caddy configs automatically. For most projects, the defaults work great. But when you need cluster mode, custom headers, rate limiting, or memory limits, you can **eject** the configs and customize them.
+
+### `shipnode eject`
+
+```bash
+shipnode eject            # eject PM2 + Caddy templates
+shipnode eject pm2        # eject only PM2 template
+shipnode eject caddy      # eject only Caddy template
+```
+
+This creates editable templates in `.shipnode/templates/`:
+
+```
+.shipnode/templates/
+├── ecosystem.config.cjs    ← customize PM2: cluster mode, memory limits, env vars
+└── Caddyfile.caddy         ← customize Caddy: headers, TLS, rate limiting, caching
+```
+
+Ejected templates are **preserved across deploys**. ShipNode will use your custom versions instead of the defaults.
+
+### Template variables
+
+Templates use `{{VAR}}` placeholders that ShipNode replaces on every deploy:
+
+| Variable | Description |
+|----------|-------------|
+| `{{APP_NAME}}` | PM2 process name |
+| `{{INTERPRETER}}` | Package manager (npm, yarn, pnpm, bun) |
+| `{{REMOTE_PATH}}` | Deployment path on server |
+| `{{BACKEND_PORT}}` | Application port |
+| `{{DOMAIN}}` | Your domain name |
+| `{{SERVE_PATH}}` | Path to static files (frontend) |
+
+### Custom PM2 config example
+
+After `shipnode eject pm2`, edit `.shipnode/templates/ecosystem.config.cjs`:
+
+```javascript
+module.exports = {
+  apps: [{
+    name: "{{APP_NAME}}",
+    script: "{{INTERPRETER}}",
+    args: "start",
+    cwd: "{{REMOTE_PATH}}/current",
+    instances: "max",              // use all CPU cores
+    exec_mode: "cluster",          // enable cluster mode
+    max_memory_restart: "1G",      // restart if memory exceeds 1GB
+    env: {
+      NODE_ENV: "production",
+      PORT: {{BACKEND_PORT}}
+    }
+  }]
+};
+```
+
+### Custom Caddy config example
+
+After `shipnode eject caddy`, edit `.shipnode/templates/Caddyfile.caddy`:
+
+```
+{{DOMAIN}} {
+    reverse_proxy localhost:{{BACKEND_PORT}}
+    encode gzip
+
+    # Custom rate limiting
+    rate_limit {
+        zone dynamic_zone {
+            key    {remote_host}
+            events 100
+            window 1s
+        }
+    }
+
+    # Custom headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    log {
+        output file /var/log/caddy/{{APP_NAME}}.log
+        format json
+    }
+}
+```
+
+### How template resolution works
+
+ShipNode looks for templates in this order:
+
+1. `.shipnode/templates/ecosystem.config.cjs` (ejected, user-customized)
+2. `ecosystem.config.cjs` in project root (user-provided)
+3. Built-in defaults (auto-generated, used when no custom template exists)
+
+To reset to defaults, just delete the ejected files:
+
+```bash
+rm .shipnode/templates/ecosystem.config.cjs
+rm .shipnode/templates/Caddyfile.caddy
+```
+
+## Pre/Post Deploy Hooks
+
+ShipNode auto-generates hook scripts in `.shipnode/` during `shipnode init`. These run on your server during deployment.
+
+### Pre-deploy hook (`.shipnode/pre-deploy.sh`)
+
+Runs **before** the new release goes live. If it fails, the deployment aborts and rolls back.
+
+Use for: database migrations, Prisma generate, cache warming.
+
+```bash
+#!/bin/bash
+# Auto-generated by shipnode init
+# Available: RELEASE_PATH, REMOTE_PATH, PM2_APP_NAME, BACKEND_PORT, SHARED_ENV_PATH
+
+set -e
+source "$SHARED_ENV_PATH"  # load .env variables
+cd "$RELEASE_PATH"
+
+# Prisma migrations (auto-detected by shipnode init)
+npx prisma generate
+npx prisma migrate deploy
+```
+
+### Post-deploy hook (`.shipnode/post-deploy.sh`)
+
+Runs **after** the deployment succeeds. If it fails, the deployment is still considered successful.
+
+Use for: notifications, cache clearing, cleanup.
+
+```bash
+#!/bin/bash
+# Auto-generated by shipnode init
+
+set -e
+source "$SHARED_ENV_PATH"
+
+# Send Slack notification
+curl -X POST "$SLACK_WEBHOOK" \
+  -H 'Content-Type: application/json' \
+  -d "{\"text\":\"Deployment of $PM2_APP_NAME completed\"}"
+
+# Clear application cache
+cd "$RELEASE_PATH"
+npm run cache:clear
+```
+
+## Configuration
+
+### `shipnode.conf` reference
+
+```bash
+# === Required ===
+APP_TYPE=backend             # "backend" or "frontend"
+SSH_USER=root                # SSH user for connecting to server
+SSH_HOST=123.45.67.89        # Server IP or hostname
+REMOTE_PATH=/var/www/app     # Where your app lives on the server
+
+# === Optional ===
+SSH_PORT=22                  # SSH port (default: 22)
+NODE_VERSION=lts             # Node.js version for setup (default: lts)
+DOMAIN=myapp.com             # Domain for automatic HTTPS via Caddy
+PKG_MANAGER=                 # Override auto-detection (npm, yarn, pnpm, bun)
+
+# === Backend-specific (required if APP_TYPE=backend) ===
+PM2_APP_NAME=myapp           # PM2 process name
+BACKEND_PORT=3000            # Port your app listens on
+
+# === Zero-downtime deployment ===
+ZERO_DOWNTIME=true           # Enable atomic deployments (default: true)
+KEEP_RELEASES=5              # How many old releases to keep (default: 5)
+
+# === Health checks (backend only) ===
+HEALTH_CHECK_ENABLED=true    # Enable health checks (default: true)
+HEALTH_CHECK_PATH=/health    # Endpoint to check (default: /health)
+HEALTH_CHECK_TIMEOUT=30      # Seconds per attempt (default: 30)
+HEALTH_CHECK_RETRIES=3       # Attempts before rollback (default: 3)
+
+# === Hooks ===
+# ShipNode uses .shipnode/pre-deploy.sh and .shipnode/post-deploy.sh by default.
+# Override paths here if needed:
+# PRE_DEPLOY_SCRIPT=.shipnode/pre-deploy.sh
+# POST_DEPLOY_SCRIPT=.shipnode/post-deploy.sh
+```
+
+### Multi-environment
+
+Use different config files for different environments:
+
+```bash
+shipnode deploy                              # uses shipnode.conf (production)
+shipnode deploy --profile staging            # uses shipnode.staging.conf
+shipnode deploy --config shipnode.prod.conf  # uses custom config file
 ```
 
 ## Package Manager Support
 
-ShipNode automatically detects your package manager from lockfiles:
+ShipNode auto-detects your package manager from lockfiles:
 
-| Lockfile | Package Manager | Install Command |
-|----------|----------------|----------------|
-| `bun.lockb` or `bun.lock` | bun | `bun install --production` |
-| `pnpm-lock.yaml` | pnpm | `pnpm install --prod` |
-| `yarn.lock` | yarn | `yarn install --production` |
-| (none) | npm | `npm install --production` |
+| Lockfile | Package Manager |
+|----------|----------------|
+| `bun.lockb` or `bun.lock` | bun |
+| `pnpm-lock.yaml` | pnpm |
+| `yarn.lock` | yarn |
+| (none) | npm |
 
-**Manual override:**
+Override in `shipnode.conf`: `PKG_MANAGER=bun`
 
-Add to `shipnode.conf` to force a specific package manager:
-```bash
-PKG_MANAGER=bun
-```
+## Backend Examples
 
-The detected package manager is used automatically during deployment for:
-- Installing dependencies (`shipnode deploy`)
-- Building the application (`npm run build` → `bun run build`, etc.)
-
-## Zero-Downtime Deployment
-
-ShipNode uses atomic release-based deployments to ensure zero downtime during updates.
-
-### How It Works
-
-Each deployment creates a timestamped release in the `releases/` directory:
-
-```
-/var/www/myapp/
-├── releases/
-│   ├── 20240124150000/     # Previous release
-│   ├── 20240124160000/     # Current release
-│   └── 20240124170000/     # Latest release
-├── current -> releases/20240124170000/  # Atomic symlink
-├── shared/
-│   ├── .env                # Shared environment variables
-│   └── logs/               # Shared logs
-└── .shipnode/
-    ├── releases.json       # Release history
-    └── deploy.lock         # Deployment lock
-```
-
-During deployment:
-1. New release created in `releases/$timestamp/`
-2. Dependencies installed per-release
-3. Symlink atomically switched: `current -> releases/$timestamp/`
-4. PM2 reloaded (backend only)
-5. Health check performed
-6. If health check fails → automatic rollback
-7. Old releases cleaned up (keeps last N releases)
-
-### Configuration
-
-Add to `shipnode.conf`:
-
-```bash
-# Enable zero-downtime deployment (enabled by default)
-ZERO_DOWNTIME=true
-
-# Number of releases to keep (default: 5)
-KEEP_RELEASES=5
-
-# Health check settings (backend only)
-HEALTH_CHECK_ENABLED=true
-HEALTH_CHECK_PATH=/health        # Endpoint to check
-HEALTH_CHECK_TIMEOUT=30          # Seconds per attempt
-HEALTH_CHECK_RETRIES=3           # Attempts before rollback
-```
-
-### Health Checks
-
-For backend deployments, add a health endpoint to your app:
-
-```javascript
-// Express example
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-// Fastify example
-fastify.get('/health', async (request, reply) => {
-  return { status: 'ok' };
-});
-```
-
-After deployment, ShipNode will:
-- Wait 3 seconds for app to start
-- Attempt health check (default: 3 retries, 30s timeout)
-- If all checks fail → automatic rollback to previous release
-- If checks pass → deployment succeeds
-
-### Rollback
-
-Rollback to a previous release:
-
-```bash
-# Rollback to immediately previous release
-shipnode rollback
-
-# Rollback 2 releases back
-shipnode rollback 2
-
-# List available releases first
-shipnode releases
-```
-
-Rollback performs:
-1. Atomic symlink switch to target release
-2. PM2 reload (backend only)
-3. Health check verification
-4. Confirmation of success/failure
-
-### Migration
-
-If you have an existing deployment, migrate to the release structure:
-
-```bash
-shipnode migrate
-```
-
-This will:
-1. Move existing files to first release
-2. Create release structure
-3. Setup `current` symlink
-4. Update PM2 configuration (backend)
-5. Update Caddy configuration
-
-**Note:** Migration is a one-time operation. Back up your data first.
-
-### Disabling Zero-Downtime
-
-To use legacy deployment (direct rsync without releases):
-
-```bash
-# In shipnode.conf
-ZERO_DOWNTIME=false
-```
-
-## Deploy Preview (Dry Run)
-
-Preview deployment steps without executing them:
-
-```bash
-shipnode deploy --dry-run
-```
-
-The dry-run mode shows:
-
-**Configuration Summary:**
-- App type, SSH connection details
-- Remote deployment path
-- PM2 process name (for backends)
-- Domain configuration
-- Zero-downtime settings
-- Health check configuration (secrets redacted)
-
-**Local Build Commands:**
-- Detected package manager
-- Build command to be executed
-- Build output directory
-
-**Remote Deployment Steps:**
-- Files to be synced via rsync
-- Excluded patterns (node_modules, .env, .git, etc.)
-- Remote commands to be executed
-- Zero-downtime flow steps (if enabled)
-
-**Example output:**
-```
-→ ShipNode Deploy Preview
-
-══════════════════════════════════════════════════════════════════
-Configuration Summary
-══════════════════════════════════════════════════════════════════
-App Type:       backend
-SSH:            deployer@203.0.113.10:22
-Remote Path:    /var/www/myapp
-PM2 Name:       myapp
-Backend Port:   3000
-Domain:         api.myapp.com
-Zero-downtime:  true
-Keep Releases:  5
-Health Checks:  enabled
-  Endpoint:     /health
-  Timeout:      30s
-  Retries:      3
-
-══════════════════════════════════════════════════════════════════
-Local Build Commands
-══════════════════════════════════════════════════════════════════
-→ Building application...
-  Command: npm run build
-  Package Manager: npm (detected from package-lock.json)
-
-══════════════════════════════════════════════════════════════════
-Remote Deployment Steps
-══════════════════════════════════════════════════════════════════
-→ Syncing files to remote...
-  Source: ./
-  Target: deployer@203.0.113.10:/var/www/myapp/releases/20240222143000/
-  Excluded: node_modules/ .env .env.* .git/ .github/ dist/ build/
-
-→ Setting up release structure...
-  - Create shared directories
-  - Symlink .env file
-  - Install dependencies
-
-→ Zero-downtime deployment...
-  1. Create new release directory
-  2. Sync application files
-  3. Install dependencies
-  4. Update 'current' symlink atomically
-  5. Reload PM2 process
-  6. Perform health checks (3 attempts, 30s timeout)
-  7. If health check fails → rollback to previous release
-  8. Cleanup old releases (keep last 5)
-
-→ Deployment preview complete (dry-run, no changes made)
-```
-
-**Use cases:**
-- Validate configuration before first deployment
-- Preview zero-downtime flow steps
-- Verify build commands and paths
-- Check rsync targets and exclusions
-- CI/CD pipeline validation
-
-## Troubleshooting
-
-### Gum installation fails
-- Symptom: "Failed to install Gum. The interactive wizard will use fallback mode."
-- Cause: Package not available on your distro or missing sudo privileges
-- Fix:
-  - Install manually: Debian/Ubuntu `sudo apt install gum`, Fedora `sudo dnf install gum`, Arch `sudo pacman -S gum`, Alpine `sudo apk add gum`, macOS `brew install gum`
-  - Check installation log: `/tmp/shipnode_gum_install_<PID>.log`
-  - Continue without Gum: the wizard will automatically use classic prompts
-
-### Framework not detected
-- Ensure `package.json` is valid JSON (no trailing commas)
-- `jq` must be available on your local machine
-  - Install: `sudo apt install jq` or equivalent
-- The wizard still works without detection; select app type manually
-
-### Port not detected
-- The wizard supports common patterns: `PORT=3000`, `--port=5000`, `localhost:4000`, `listen(:3000)`
-- If your scripts differ, enter the port manually when prompted
-
-### CI/CD environments
-- Non-interactive environments have no TTY; Gum prompts are auto-disabled
-- Use `shipnode init --non-interactive` for fully scripted setups
-
-### SSH issues
-- Test connection: `ssh -p <port> <user>@<host>`
-- Ensure public key is deployed or correct password authentication is enabled
-- Verify firewall allows SSH port
-
-## User Provisioning
-
-ShipNode allows you to provision multiple users on your server with SSH or password authentication. Users can be granted deployment permissions and optional sudo access.
-
-### Quick Start
-
-1. **Generate password hash:**
-```bash
-shipnode mkpasswd
-# Enter password: ********
-# Output: $6$rounds=5000$salt$hash...
-```
-
-2. **Create `users.yml`:**
-```bash
-cp users.yml.example users.yml
-```
-
-3. **Edit `users.yml` with your users:**
-```yaml
-users:
-  - username: alice
-    email: alice@example.com
-    password: "$6$rounds=5000$..."  # From mkpasswd
-
-  - username: bob
-    email: bob@example.com
-    authorized_key: "ssh-ed25519 AAAAC3... bob@laptop"
-    sudo: true
-```
-
-4. **Sync users to server:**
-```bash
-shipnode user sync
-```
-
-### Configuration File
-
-The `users.yml` file defines all users to provision. Place it in the same directory as `shipnode.conf`.
-
-#### Field Reference
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `username` | string | Yes | System username (alphanumeric + underscore/dash, max 32 chars) |
-| `email` | string | Yes | User email address |
-| `password` | string | No | Hashed password (use `shipnode mkpasswd`) |
-| `sudo` | boolean | No | Grant sudo access (default: false) |
-| `authorized_key` | string | No | Single SSH public key (inline) |
-| `authorized_key_file` | string | No | Path to SSH public key file |
-| `authorized_keys` | list | No | Multiple SSH public keys |
-
-#### Example Configurations
-
-**Password user (must change on first login):**
-```yaml
-- username: alice
-  email: alice@company.com
-  password: "$6$rounds=5000$saltsalt$hashedpassword..."
-```
-
-**SSH key user with sudo:**
-```yaml
-- username: bob
-  email: bob@company.com
-  authorized_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample... bob@laptop"
-  sudo: true
-```
-
-**CI/CD user (key from file):**
-```yaml
-- username: ci-deploy
-  email: ci@company.com
-  authorized_key_file: ~/.ssh/ci_deploy.pub
-```
-
-**User with multiple keys:**
-```yaml
-- username: developer
-  email: dev@company.com
-  authorized_keys:
-    - "ssh-ed25519 AAAAC3... dev@work"
-    - "ssh-ed25519 AAAAC3... dev@home"
-```
-
-**Admin with password + SSH key + sudo:**
-```yaml
-- username: devops
-  email: devops@company.com
-  password: "$6$rounds=5000$..."
-  sudo: true
-  authorized_key: "ssh-ed25519 AAAAC3... devops@work"
-```
-
-### Commands
-
-**Sync users to server:**
-```bash
-shipnode user sync
-```
-- Creates new users defined in `users.yml`
-- Skips existing users (idempotent)
-- Sets up SSH keys and permissions
-- Forces password change on first login for password users
-
-**List provisioned users:**
-```bash
-shipnode user list
-```
-Shows all users with their auth method, sudo status, and creation date.
-
-**Remove user access:**
-```bash
-shipnode user remove alice
-```
-- Removes user from `shipnode-deployers` and `sudo` groups
-- Locks account
-- Clears SSH keys
-- Does NOT delete the system user
-
-**Generate password hash:**
-```bash
-shipnode mkpasswd
-```
-Prompts for password and generates hash for `users.yml`.
-
-### How It Works
-
-When you run `shipnode user sync`, ShipNode:
-
-1. **Creates users** on the server with specified authentication
-2. **Creates `shipnode-deployers` group** for deployment permissions
-3. **Sets up ACLs** on deployment directory for group access
-4. **Configures sudo** for PM2 commands (all deployers can manage PM2)
-5. **Grants full sudo** to users with `sudo: true`
-6. **Records users** in `.shipnode/users.json` on server
-
-#### Authentication Methods
-
-**Password Authentication:**
-- User created with hashed password
-- Forced to change password on first SSH login (`chage -d 0`)
-- Generate hash with `shipnode mkpasswd`
-
-**SSH Key Authentication:**
-- Keys added to `~/.ssh/authorized_keys`
-- Immediate access upon creation
-- Can specify inline, from file, or multiple keys
-
-### Permissions
-
-All provisioned users are automatically added to the `shipnode-deployers` group with:
-
-- **Read/write/execute** access to deployment directory
-- **PM2 management** via sudo (no password required for `pm2` commands)
-- **ACLs** set on deployment directory and inherited by new files
-
-Users with `sudo: true` additionally get:
-- **Full sudo access** (added to `sudo` group)
-
-### Example Workflow
-
-```bash
-# 1. Generate password for a user
-shipnode mkpasswd
-# Enter password: ********
-# $6$rounds=5000$...
-
-# 2. Create users.yml
-cat > users.yml << EOF
-users:
-  - username: alice
-    email: alice@company.com
-    password: "\$6\$rounds=5000\$..."
-
-  - username: bob
-    email: bob@company.com
-    authorized_key: "ssh-ed25519 AAAAC3NzaC1lZDI1... bob@laptop"
-    sudo: true
-
-  - username: ci-deploy
-    email: ci@company.com
-    authorized_key_file: ~/.ssh/ci_deploy.pub
-EOF
-
-# 3. Provision users
-shipnode user sync
-# Created user: alice (password auth, must change on first login)
-# Created user: bob (SSH key added, sudo enabled)
-# Created user: ci-deploy (SSH key added)
-
-# 4. List users
-shipnode user list
-# USERNAME    EMAIL                   AUTH        SUDO    CREATED
-# alice       alice@company.com       password    no      2024-01-24
-# bob         bob@company.com         ssh-key     yes     2024-01-24
-# ci-deploy   ci@company.com          ssh-key     no      2024-01-24
-
-# 5. Test deployment as provisioned user
-# alice logs in and must change password
-ssh alice@server
-# Current password:
-# New password:
-
-# bob can deploy immediately
-ssh bob@server
-cd /var/www/myapp
-git pull && npm install && pm2 reload myapp
-
-# 6. Remove user when no longer needed
-shipnode user remove bob
-# Revoked access for: bob
-```
-
-### Security Notes
-
-- **Password users** must change password on first login
-- **SSH keys** provide immediate, passwordless access
-- **Sudo access** should be granted sparingly
-- **User removal** locks account but preserves system user
-- All users can manage PM2 for deployment purposes
-- Full deployment directory access via ACLs
-
-### Troubleshooting
-
-**"mkpasswd not found":**
-```bash
-sudo apt-get install whois
-```
-
-**"Invalid password hash":**
-Ensure password is wrapped in quotes in `users.yml`:
-```yaml
-password: "$6$rounds=5000$..."  # Correct
-password: $6$rounds=5000$...    # Wrong - shell will interpret $
-```
-
-**User can't access deployment directory:**
-```bash
-# Re-sync to fix permissions
-shipnode user sync
-```
-
-**User can't use PM2:**
-Check if sudoers file exists:
-```bash
-ssh root@server "cat /etc/sudoers.d/shipnode"
-```
-
-## CI/CD Integration
-
-ShipNode provides built-in CI/CD tooling for GitHub Actions workflows.
-
-### GitHub Actions Generator
-
-Generate a deployment workflow for GitHub Actions:
-
-```bash
-shipnode ci github
-```
-
-This creates `.github/workflows/deploy.yml` with a minimal deployment workflow that:
-- Installs dependencies
-- Runs build (if defined)
-- Deploys via SSH using `shipnode deploy`
-
-**Required GitHub Secrets:**
-
-The workflow expects these secrets to be configured in your repository:
-
-| Secret | Description | How to get |
-|--------|-------------|------------|
-| `SSH_PRIVATE_KEY` | SSH private key for deployment | Generate: `ssh-keygen -t ed25519 -C "deploy@ci"` |
-| `SSH_HOST` | Server IP or hostname | Your server's public IP |
-| `SSH_USER` | SSH username | Deployment user (e.g., `deployer`) |
-| `SSH_PORT` | SSH port (default: 22) | Your custom SSH port if changed |
-
-**Setup:**
-```bash
-# Generate the workflow
-shipnode ci github
-
-# Add secrets to GitHub repository:
-# Settings → Secrets and variables → Actions → New repository secret
-git add .github/workflows/deploy.yml
-git commit -m "Add GitHub Actions deployment workflow"
-git push
-```
-
-### Environment Sync
-
-Sync your `shipnode.conf` and `.env` files to GitHub Secrets:
-
-```bash
-# Sync only shipnode.conf values
-shipnode ci env-sync
-
-# Sync both config and .env file
-shipnode ci env-sync --all
-```
-
-This command:
-- Reads values from `shipnode.conf` (SSH_HOST, SSH_USER, SSH_PORT)
-- Syncs them to GitHub repository secrets using the `gh` CLI
-- Optionally syncs `.env` file contents as a base64-encoded secret
-
-**Prerequisites:**
-- `gh` CLI must be installed (auto-installed if missing)
-- Must be authenticated with GitHub: `gh auth login`
-- Must be in a git repository with a GitHub remote
-
-**Workflow Example:**
-
-```bash
-# 1. Generate workflow
-shipnode ci github
-
-# 2. Sync environment
-shipnode ci env-sync --all
-
-# 3. Push workflow
-git add .github/workflows/deploy.yml
-git commit -m "Add automated deployment"
-git push
-
-# 4. Deployment will trigger on every push to main!
-```
-
-## Backend Deployment
-
-For Node.js applications with PM2 process management.
-
-### Requirements
-
-- `package.json` in project root
-- Main entry file (e.g., `index.js`, `server.js`, or as defined in `package.json`)
-- `.env` file (excluded from sync, manage separately)
-
-### What Happens
-
-1. **Syncs files** via rsync (excludes `node_modules`, `.env`, `.git`)
-2. **Installs dependencies** with `npm install --production`
-3. **Starts/reloads** app with PM2
-4. **Configures Caddy** reverse proxy (if DOMAIN is set)
-
-### Example: Express API
+### Express API
 
 ```bash
 # Project structure
 myapi/
-├── index.js
+├── src/index.js
 ├── package.json
 ├── .env
 └── shipnode.conf
@@ -917,541 +579,281 @@ DOMAIN=api.myapp.com
 
 # Deploy
 shipnode deploy
+# → Live at https://api.myapp.com
 ```
 
-Your API is now running at `https://api.myapp.com` with PM2 managing the process.
-
-### Managing Backend
+### NestJS with Prisma
 
 ```bash
-shipnode status    # Check if app is running
-shipnode logs      # Stream live logs
-shipnode restart   # Restart app (zero downtime)
-shipnode stop      # Stop app
+# shipnode init auto-detects NestJS and generates pre-deploy hook with:
+# npx prisma generate && npx prisma migrate deploy
+
+shipnode init     # wizard detects NestJS + Prisma
+shipnode deploy   # builds, migrates, deploys
 ```
 
-## Frontend Deployment
-
-For static sites (React, Vue, Svelte, etc.) or pre-built HTML/CSS/JS.
-
-### What Happens
-
-1. **Builds locally** (runs `npm run build` if `package.json` exists)
-2. **Syncs build output** to server (default: `dist/`, auto-detects `build/` or `public/`)
-3. **Configures Caddy** to serve static files (if DOMAIN is set)
-
-### Example: React App
+### Next.js (SSR)
 
 ```bash
-# Project structure
-myapp/
-├── src/
-├── dist/           # build output
-├── package.json
-└── shipnode.conf
+# Next.js runs as a backend (Node.js server)
+# Uses output: 'standalone' in next.config.js for optimized builds
 
-# shipnode.conf
+APP_TYPE=backend
+PM2_APP_NAME=mywebapp
+BACKEND_PORT=3000
+DOMAIN=myapp.com
+```
+
+## Frontend Examples
+
+### React / Vue / Svelte SPA
+
+```bash
 APP_TYPE=frontend
 SSH_USER=root
 SSH_HOST=123.45.67.89
 REMOTE_PATH=/var/www/myapp
 DOMAIN=myapp.com
 
-# Deploy
+# ShipNode builds locally (npm run build), syncs dist/, Caddy serves it
 shipnode deploy
+# → Live at https://myapp.com with SPA routing + aggressive asset caching
 ```
 
-Your site is now live at `https://myapp.com` with automatic HTTPS from Caddy.
-
-### Skip Build
-
-If you've already built locally or want to deploy pre-built files:
+### Skip build
 
 ```bash
-shipnode deploy --skip-build
+shipnode deploy --skip-build    # deploy pre-built files
 ```
 
-## Configuration
+## Environment Variables
 
-### Complete `shipnode.conf` Reference
+ShipNode does **not** sync your `.env` file automatically (for security). Upload it once:
 
 ```bash
-# Required
-APP_TYPE=backend           # "backend" or "frontend"
-SSH_USER=root             # SSH user
-SSH_HOST=123.45.67.89     # Server IP or hostname
-REMOTE_PATH=/var/www/app  # Deployment path on server
+# Zero-downtime: .env lives in shared/ and is symlinked into each release
+scp .env root@server:/var/www/myapp/shared/.env
 
-# Optional
-SSH_PORT=22               # SSH port (default: 22)
-
-# Backend-specific (required if APP_TYPE=backend)
-PM2_APP_NAME=myapp        # PM2 process name
-BACKEND_PORT=3000         # App listening port
-
-# Optional for both
-DOMAIN=myapp.com          # Domain for Caddy config
-
-# Zero-downtime deployment
-ZERO_DOWNTIME=true              # Enable atomic deployments (default: true)
-KEEP_RELEASES=5                 # Releases to keep (default: 5)
-HEALTH_CHECK_ENABLED=true       # Enable health checks (default: true)
-HEALTH_CHECK_PATH=/health       # Health endpoint (default: /health)
-HEALTH_CHECK_TIMEOUT=30         # Timeout seconds (default: 30)
-HEALTH_CHECK_RETRIES=3          # Retry count (default: 3)
+# Or use the env command
+shipnode env
 ```
 
-## Server Requirements
+## Observability
 
-- Ubuntu/Debian server (18.04+)
-- Root or sudo access
-- SSH access with password or key
+### `shipnode status` - Application dashboard
 
-ShipNode installs these automatically with `shipnode setup`:
-- Node.js (LTS version)
-- PM2 (for backend apps)
-- Caddy (web server with auto-HTTPS)
-
-## Templates
-
-Use these templates to customize your deployments:
-
-- `templates/ecosystem.config.js.template` - PM2 configuration
-- `templates/Caddyfile.backend.template` - Backend reverse proxy
-- `templates/Caddyfile.frontend.template` - Frontend static server
-
-Copy to your project and customize as needed.
-
-## SSH Keys
-
-For passwordless deployment, add your SSH key to the server:
+Shows everything at a glance: PM2 status, uptime, CPU, memory, current release, disk usage.
 
 ```bash
-ssh-copy-id -p 22 root@your-server-ip
+shipnode status
 ```
 
-## Troubleshooting
+### `shipnode metrics` - Real-time monitoring
 
-### "Cannot connect to server"
-
-Check SSH connection manually:
-```bash
-ssh -p 22 root@your-server-ip
-```
-
-### "PM2 not found"
-
-Run setup again:
-```bash
-shipnode setup
-```
-
-### "Build failed"
-
-Check your build command in `package.json`:
-```json
-{
-  "scripts": {
-    "build": "vite build"  // or your build command
-  }
-}
-```
-
-### "Port already in use"
-
-Change `BACKEND_PORT` in `shipnode.conf` or stop the conflicting process:
-```bash
-ssh root@your-server "lsof -ti:3000 | xargs kill"
-```
-
-### Backend not starting
-
-Check PM2 logs:
-```bash
-shipnode logs
-```
-
-Or SSH to server and check:
-```bash
-ssh root@your-server
-pm2 logs myapp
-pm2 status
-```
-
-### Caddy not serving HTTPS
-
-Ensure:
-1. Domain DNS points to server IP
-2. Ports 80 and 443 are open
-3. Check Caddy logs: `ssh root@server "journalctl -u caddy -n 50"`
-
-### Health check failures
-
-If deployments keep failing health checks:
-
-1. Verify your app has the health endpoint:
-   ```bash
-   ssh root@your-server "curl http://localhost:3000/health"
-   ```
-
-2. Check if health check path is correct in `shipnode.conf`
-3. Increase timeout: `HEALTH_CHECK_TIMEOUT=60`
-4. Check PM2 logs: `shipnode logs`
-5. Temporarily disable: `HEALTH_CHECK_ENABLED=false`
-
-### Deployment lock issues
-
-If you see "Another deployment in progress":
+Opens the PM2 monitoring dashboard over SSH. Shows live CPU, memory, and log streams.
 
 ```bash
-# Check for stale lock (SSH to server)
-ssh root@your-server "cat /var/www/myapp/.shipnode/deploy.lock"
-ssh root@your-server "rm /var/www/myapp/.shipnode/deploy.lock"
+shipnode metrics
+# Press Ctrl+C to exit
 ```
 
-### Release cleanup
-
-Manually clean old releases:
+### `shipnode logs` - Live log stream
 
 ```bash
-ssh root@your-server "cd /var/www/myapp/releases && ls -t | tail -n +6 | xargs rm -rf"
+shipnode logs          # stream PM2 logs
+shipnode restart       # restart app
+shipnode stop          # stop app
 ```
 
-Or adjust retention: `KEEP_RELEASES=10` in `shipnode.conf`
+### `shipnode releases` - Release history
 
-## Comparison with Other Tools
-
-| Feature | ShipNode | Deployer | PM2 Deploy | Capistrano |
-|---------|----------|----------|------------|------------|
-| Language | Bash | PHP | JS | Ruby |
-| Config | 1 file | Multiple | ecosystem.config.js | Multiple |
-| Learning curve | Minutes | Hours | Hours | Days |
-| Dependencies | None | PHP | Node.js | Ruby |
-| Caddy integration | ✅ | ❌ | ❌ | ❌ |
-| Frontend + Backend | ✅ | ❌ | ✅ | ✅ |
-
-## Examples
-
-### Backend API + Frontend SPA
-
-Deploy them separately with different configs:
+Lists all deployments with timestamps and status.
 
 ```bash
-# Backend
-cd ~/projects/api
-shipnode init
-# Edit shipnode.conf (APP_TYPE=backend, DOMAIN=api.myapp.com)
-shipnode deploy
-
-# Frontend
-cd ~/projects/web
-shipnode init
-# Edit shipnode.conf (APP_TYPE=frontend, DOMAIN=myapp.com)
-shipnode deploy
+shipnode releases
 ```
 
-### Multiple Environments
+### Deployment metadata
 
-Use different config files:
+Every deployment records:
+- **Duration** - how long the deploy took
+- **Git commit** - which commit was deployed (from `git rev-parse --short HEAD`)
+- **Health check** - pass/fail, attempts, response time in milliseconds
+- **Previous release** - which version it replaced
 
-```bash
-# Production
-shipnode deploy  # uses shipnode.conf
+## Security
 
-# Staging (copy config first)
-cp shipnode.conf shipnode.staging.conf
-# Edit shipnode.staging.conf
-# Note: You'll need to modify the script to support this use case
-```
-
-## Advanced Usage
-
-### Custom Build Directory
-
-If your build output is in a non-standard location, create a symlink:
-
-```bash
-ln -s my-custom-dist dist
-```
-
-### Environment Variables
-
-For backends, manage `.env` files separately:
-
-**With zero-downtime deployment:**
-```bash
-# Copy .env to shared directory (persists across releases)
-scp .env root@your-server:/var/www/myapp/shared/.env
-
-# Then deploy (will be symlinked to each release)
-shipnode deploy
-```
-
-**Without zero-downtime deployment:**
-```bash
-# Copy .env directly
-scp .env root@your-server:/var/www/myapp/.env
-
-# Then deploy
-shipnode deploy
-```
-
-### Custom PM2 Config
-
-Copy the template and customize:
-
-```bash
-cp ~/Code/Labs/shipnode/templates/ecosystem.config.js.template ./ecosystem.config.js
-# Edit ecosystem.config.js
-# Deploy will use your custom config
-```
-
-### Multiple Instances
-
-Edit `ecosystem.config.js`:
-
-```javascript
-instances: 4,  // or 'max' for all CPU cores
-exec_mode: 'cluster'
-```
-
-## Security Baseline
-
-ShipNode provides built-in security tools to harden your deployment server and audit its security posture.
-
-### Server Hardening
-
-Apply security hardening to your server with the `harden` command:
+### Server hardening
 
 ```bash
 shipnode harden
 ```
 
-This interactive command applies the following hardening measures:
+Interactive wizard to:
+- Disable SSH password authentication
+- Disable root SSH login
+- Change SSH port
+- Enable UFW firewall (22, 80, 443 only)
+- Install and configure fail2ban
 
-**SSH Security:**
-- Change SSH port (optional)
-- Disable password authentication (optional)
-- Disable root login (optional)
+All changes are **opt-in** - you choose what to apply.
 
-**Firewall (UFW):**
-- Allow SSH, HTTP, and HTTPS only
-- Deny all other inbound traffic
-
-**Fail2Ban:**
-- Install and configure fail2ban (optional)
-- Protect against brute-force attacks
-
-All changes are **opt-in** with clear prompts. You'll see a summary before any changes are applied.
-
-**Example output:**
-```
-→ ShipNode Server Hardening
-
-SSH Configuration:
-  ✓ Password authentication disabled
-  ✓ Root login disabled
-
-Firewall (UFW):
-  ✓ Enabled
-  ✓ Allowed: 22/tcp (SSH)
-  ✓ Allowed: 80/tcp (HTTP)
-  ✓ Allowed: 443/tcp (HTTPS)
-
-Fail2Ban:
-  ✓ Installed and enabled
-
-→ Server hardening complete!
-```
-
-### Security Audit
-
-Run a non-destructive security audit with the `doctor` command:
+### Security audit
 
 ```bash
 shipnode doctor --security
 ```
 
-**What it checks:**
+Non-destructive check of: SSH config, firewall status, fail2ban, file permissions.
 
-- **SSH Configuration:**
-  - Root login status
-  - Password authentication status
-  - Current SSH port
-
-- **Firewall Status:**
-  - UFW enabled/disabled
-  - Allowed ports
-  - Default policies
-
-- **Fail2Ban:**
-  - Installation status
-  - Service status
-  - Active jails
-
-- **File Permissions:**
-  - `shipnode.conf` permissions (should not be world-readable)
-  - `.env` file permissions (if present locally)
-
-**Example output:**
-```
-→ Security Audit
-
-SSH Configuration:
-  ✓ Root login disabled
-  ✓ Password authentication disabled
-  ✓ SSH port: 22
-
-Firewall Status:
-  ✓ UFW enabled
-  ✓ Deny incoming (default)
-  ✓ Allow 22/tcp (SSH)
-  ✓ Allow 80/tcp (HTTP)
-  ✓ Allow 443/tcp (HTTPS)
-
-Fail2Ban:
-  ✓ Installed
-  ✓ Service active
-  ✓ SSH jail enabled
-
-File Permissions:
-  ! shipnode.conf is world-readable (recommended: chmod 600)
-
-→ Audit complete! 1 warning found.
-```
-
-### Configuration Profiles
-
-Use different configuration files for different environments:
+### Pre-flight checks
 
 ```bash
-# Production deployment
-shipnode deploy
-
-# Staging deployment
-shipnode deploy --config shipnode.staging.conf
-
-# Custom config location
-shipnode deploy --config /path/to/custom.conf
+shipnode doctor
 ```
 
-Profile configs follow the naming convention `shipnode.<env>.conf` (e.g., `shipnode.staging.conf`, `shipnode.prod.conf`).
+Validates your entire setup: local config, SSH connectivity, remote Node.js/PM2/Caddy, disk space.
 
-### Security Notes
+## CI/CD Integration
 
-- ShipNode doesn't handle secrets - manage `.env` files manually
-- Use SSH keys instead of passwords
-- Run as non-root user when possible
-- Enable UFW firewall: `ufw allow 22,80,443/tcp`
-- Keep server updated: `apt update && apt upgrade`
+### GitHub Actions
 
-## Roadmap
-
-Upcoming features to make deployment even simpler:
-
-### Interactive `init` Wizard
-Auto-detect framework and guide setup with prompts:
 ```bash
-$ shipnode init
-Detected: package.json with "express" dependency → backend
+# Generate workflow file
+shipnode ci github
 
-? Server IP: 192.168.1.100
-? SSH user [root]: deploy
-? Domain: api.myapp.com
-? Add deployment users? (Y/n): y
-? Username: alice
-? Email: alice@company.com
-? Auth method: (ssh-key/password) ssh-key
-? SSH public key: ssh-ed25519 AAAAC3...
+# Sync secrets (SSH_HOST, SSH_USER, SSH_PORT, SSH_PRIVATE_KEY)
+shipnode ci env-sync --all
 
-✓ Created shipnode.conf
-✓ Created users.yml (1 user)
+# Push and you're done
+git add .github/workflows/deploy.yml
+git commit -m "Add deployment workflow"
+git push
 ```
 
-### Pre-flight Checks (`doctor`)
-Validate everything before deployment:
+## User Provisioning
+
+Manage server users with `users.yml`:
+
+```yaml
+users:
+  - username: alice
+    email: alice@company.com
+    password: "$6$rounds=5000$..."     # generate with: shipnode mkpasswd
+
+  - username: bob
+    email: bob@company.com
+    authorized_key: "ssh-ed25519 AAAAC3... bob@laptop"
+    sudo: true
+```
+
 ```bash
-$ shipnode doctor
-✓ shipnode.conf exists
-✓ SSH connection OK
-✓ Node.js v20 installed
-✗ Health endpoint /health not responding
+shipnode user sync           # create users on server
+shipnode user list           # show all users
+shipnode user remove bob     # revoke access
+shipnode mkpasswd            # generate password hash
 ```
 
-### GitHub Actions Generator
-Auto-generate CI/CD workflow:
-```bash
-$ shipnode ci github
-✓ Created .github/workflows/deploy.yml
+All users get:
+- SSH or password authentication
+- Deployment directory access via ACLs
+- PM2 management via passwordless sudo
 
-Required secrets: SSH_PRIVATE_KEY, SSH_HOST
-```
+## Supported Frameworks
+
+Auto-detected from your `package.json`:
+
+| Framework | Type | Port | Health Check |
+|-----------|------|------|-------------|
+| Express | Backend | 3000 | `/health` |
+| NestJS | Backend | 3000 | `/api/health` |
+| Fastify | Backend | 3000 | `/health` |
+| Koa | Backend | 3000 | `/health` |
+| Hono | Backend | 3000 | `/health` |
+| AdonisJS | Backend | 3333 | `/health` |
+| Next.js | Backend (SSR) | 3000 | `/api/health` |
+| Nuxt | Backend (SSR) | 3000 | `/api/health` |
+| Remix | Backend | 3000 | `/healthcheck` |
+| Astro | Backend/Frontend | 4321 | `/api/health` |
+| React | Frontend | - | - |
+| Vue | Frontend | - | - |
+| Svelte | Frontend | - | - |
+| Angular | Frontend | - | - |
+| SolidJS | Frontend | - | - |
+
+Use `shipnode init --template <name>` to use a specific preset, or `shipnode init --list-templates` to see all options.
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Cannot connect to server | `ssh -p 22 root@your-server` to test |
+| PM2 not found | `shipnode setup` to install |
+| Build failed | Check `package.json` has a `build` script |
+| Port already in use | Change `BACKEND_PORT` or kill the process |
+| Health check fails | Verify `/health` endpoint: `ssh root@server "curl localhost:3000/health"` |
+| Deployment lock stuck | `shipnode unlock` |
+| Gum installation fails | Install manually: `sudo apt install gum` |
+| Framework not detected | Install `jq`, or select manually in wizard |
+
+## Comparison
+
+| Feature | ShipNode | PM2 Deploy | Capistrano | Kamal |
+|---------|----------|------------|------------|-------|
+| Language | Bash | JS | Ruby | Ruby |
+| Config files | 1 | 1 | Multiple | 1 |
+| Zero-downtime | Built-in | Manual | Built-in | Built-in |
+| Auto rollback | Yes | No | No | No |
+| HTTPS | Automatic | Manual | Manual | Automatic |
+| Frontend + Backend | Both | Backend | Backend | Both |
+| Custom templates | Yes (eject) | Manual | Templates | No |
+| Dependencies | None | Node.js | Ruby | Ruby + Docker |
 
 ## Project Structure
 
-ShipNode is organized as a modular bash project for maintainability:
-
 ```
 shipnode/
-├── shipnode                    # Main entry point (sources all modules)
+├── shipnode                          # Main entry point
 ├── lib/
-│   ├── core.sh                # Globals, colors, logging functions
-│   ├── release.sh             # Zero-downtime release management
-│   ├── database.sh            # PostgreSQL setup functions
-│   ├── users.sh               # User provisioning helpers
-│   ├── framework.sh           # Framework detection from package.json
-│   ├── validation.sh          # Input validation functions
-│   ├── prompts.sh             # Interactive prompts + Gum UI
+│   ├── core.sh                       # Logging, template rendering
+│   ├── pkg-manager.sh                # Package manager detection
+│   ├── release.sh                    # Zero-downtime release management
+│   ├── framework.sh                  # Framework auto-detection
+│   ├── validation.sh                 # Input validation
+│   ├── prompts.sh                    # Interactive UI (Gum)
 │   └── commands/
-│       ├── config.sh          # Config loading
-│       ├── users-yaml.sh      # Users.yml generation
-│       ├── user.sh            # User sync/list/remove
-│       ├── mkpasswd.sh        # Password hash generation
-│       ├── init.sh            # Init command
-│       ├── setup.sh           # Setup command
-│       ├── deploy.sh          # Deploy command
-│       ├── status.sh          # Status/logs/restart/stop
-│       ├── unlock.sh          # Unlock command
-│       ├── rollback.sh        # Rollback/releases
-│       ├── migrate.sh         # Migrate command
-│       ├── env.sh             # Env upload
-│       ├── help.sh            # Help command
-│       └── main.sh            # Main dispatcher
-├── build.sh                   # Optional: Bundle modules into single file
-├── templates/                 # PM2 and Caddy templates
-└── examples/                  # Example projects
+│       ├── init.sh                   # shipnode init
+│       ├── setup.sh                  # shipnode setup
+│       ├── deploy.sh                 # shipnode deploy
+│       ├── status.sh                 # shipnode status (dashboard)
+│       ├── rollback.sh               # shipnode rollback
+│       ├── eject.sh                  # shipnode eject (templates)
+│       ├── metrics.sh                # shipnode metrics
+│       ├── config-cmd.sh             # shipnode config
+│       ├── doctor.sh                 # shipnode doctor
+│       ├── harden.sh                 # shipnode harden
+│       ├── ci.sh                     # shipnode ci
+│       └── ...
+├── templates/
+│   ├── ecosystem.config.cjs.tmpl     # PM2 template (for eject)
+│   ├── Caddyfile.backend.tmpl        # Caddy backend template (for eject)
+│   ├── Caddyfile.frontend.tmpl       # Caddy frontend template (for eject)
+│   ├── pre-deploy.sh.template        # Pre-deploy hook template
+│   └── post-deploy.sh.template       # Post-deploy hook template
+├── examples/
+│   ├── express-api/
+│   ├── nestjs-api/
+│   ├── nextjs-app/
+│   └── react-router-app/
+└── build.sh                          # Bundle into single file
 ```
 
-### Development Workflow
-
-**For Development:**
-```bash
-# Run modular version (sources lib/ modules)
-./shipnode help
-```
-
-**For Distribution:**
-```bash
-# Bundle into single file
-./build.sh
-# Creates: shipnode-bundled
-```
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed module documentation.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for module documentation.
 
 ## Contributing
 
-ShipNode is a simple tool intentionally. If you need:
-- Blue-green deployments → Use Kubernetes
-- Complex rollbacks → Use Capistrano
-- CI/CD integration → Use GitHub Actions + ShipNode
-
-But if you find bugs or have simple improvements, contributions welcome!
+ShipNode is intentionally simple. Contributions welcome for bug fixes and small improvements.
 
 ## License
 
 MIT
-
-## Author
-
-Created for simple, no-nonsense Node.js deployments.

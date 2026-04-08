@@ -73,19 +73,37 @@ get_pkg_run_cmd() {
     esac
 }
 
-# Generate PM2 ecosystem file with symlink as cwd
+# Determine interpreter for package manager
+get_interpreter() {
+    local pkg_manager=$1
+    case "$pkg_manager" in
+        bun)  echo "bun" ;;
+        pnpm) echo "pnpm" ;;
+        yarn) echo "yarn" ;;
+        *)    echo "npm" ;;
+    esac
+}
+
+# Generate PM2 ecosystem file - checks for ejected templates first
 generate_ecosystem_file() {
     local pkg_manager=$1
     local app_name=$2
     local cwd=$3
     local interpreter
-    case "$pkg_manager" in
-        bun)  interpreter="bun" ;;
-        pnpm) interpreter="pnpm" ;;
-        yarn) interpreter="yarn" ;;
-        *)    interpreter="npm" ;;
-    esac
-    cat << EOF
+    interpreter=$(get_interpreter "$pkg_manager")
+
+    local template_file
+    template_file=$(resolve_template "ecosystem.config.cjs")
+
+    if [ -n "$template_file" ]; then
+        info "Using custom PM2 template: $template_file"
+        render_template "$template_file" \
+            APP_NAME "$app_name" \
+            INTERPRETER "$interpreter" \
+            REMOTE_PATH "$cwd" \
+            BACKEND_PORT "${BACKEND_PORT:-3000}"
+    else
+        cat << EOF
 module.exports = {
   apps: [{
     name: "$app_name",
@@ -98,6 +116,7 @@ module.exports = {
   }]
 };
 EOF
+    fi
 }
 
 # Install package manager on remote server

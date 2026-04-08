@@ -230,6 +230,14 @@ cmd_deploy_dry_run() {
     echo "  DRY RUN COMPLETE - No changes made"
     echo "==========================================="
     echo ""
+
+    if [ -f ".shipnode/templates/ecosystem.config.cjs" ]; then
+        info "Using custom PM2 template: .shipnode/templates/ecosystem.config.cjs"
+    fi
+    if [ -f ".shipnode/templates/Caddyfile.caddy" ]; then
+        info "Using custom Caddy template: .shipnode/templates/Caddyfile.caddy"
+    fi
+
     echo "To execute this deployment, run:"
     echo "  shipnode deploy"
     if [ "$SKIP_BUILD" = true ]; then
@@ -307,6 +315,14 @@ deploy_backend_legacy() {
     local SKIP_BUILD=$1
     info "Using legacy deployment (non-zero-downtime)..."
 
+    local deploy_start
+    deploy_start=$(date +%s)
+
+    local git_commit=""
+    if git rev-parse --short HEAD >/dev/null 2>&1; then
+        git_commit=$(git rev-parse --short HEAD)
+    fi
+
     # Rsync application files
     info "Syncing files to server..."
     remote_rsync -avz --progress \
@@ -316,6 +332,7 @@ deploy_backend_legacy() {
         --exclude '.gitignore' \
         --exclude 'shipnode.conf' \
         --exclude '*.log' \
+        --exclude '.shipnode' \
         ./ "$SSH_USER@$SSH_HOST:$REMOTE_PATH/"
 
     success "Files synced"
@@ -379,6 +396,14 @@ deploy_backend_zero_downtime() {
     local SKIP_BUILD=$1
     info "Using zero-downtime deployment..."
 
+    local deploy_start
+    deploy_start=$(date +%s)
+
+    local git_commit=""
+    if git rev-parse --short HEAD >/dev/null 2>&1; then
+        git_commit=$(git rev-parse --short HEAD)
+    fi
+
     # Acquire deployment lock
     info "Acquiring deployment lock..."
     acquire_deploy_lock
@@ -408,6 +433,7 @@ deploy_backend_zero_downtime() {
         --exclude '.gitignore' \
         --exclude 'shipnode.conf' \
         --exclude '*.log' \
+        --exclude '.shipnode' \
         ./ "$SSH_USER@$SSH_HOST:$release_path/"
 
     success "Files synced to $release_path"
@@ -454,7 +480,6 @@ ENDSSH
     # Reload PM2
     info "Reloading application..."
 
-    # Always regenerate ecosystem file to ensure it's up to date
     info "Generating PM2 ecosystem config..."
     generate_ecosystem_file "$PKG_MANAGER" "$PM2_APP_NAME" "$REMOTE_PATH/current" \
         | remote_exec "cat > $REMOTE_PATH/shared/ecosystem.config.cjs"
@@ -469,22 +494,33 @@ ENDSSH
     sleep 3
 
     # Run health check if enabled
+    local health_attempts=""
+    local health_response_ms=""
     if [ "$HEALTH_CHECK_ENABLED" = "true" ]; then
         if ! perform_health_check; then
             warn "Health check failed, rolling back..."
             if [ -n "$previous_release" ]; then
                 rollback_to_release "$previous_release"
-                record_release "$timestamp" "failed"
+                local deploy_end=$(date +%s)
+                local deploy_duration=$((deploy_end - deploy_start))
+                record_release "$timestamp" "failed" "$deploy_duration" "$git_commit" "" "" "$previous_release"
                 error "Deployment failed, rolled back to $previous_release"
             else
+                local deploy_end=$(date +%s)
+                local deploy_duration=$((deploy_end - deploy_start))
+                record_release "$timestamp" "failed" "$deploy_duration" "$git_commit" "" "" ""
                 error "Health check failed and no previous release to rollback to"
             fi
         fi
+        health_attempts="${_HEALTH_CHECK_ATTEMPTS:-}"
+        health_response_ms="${_HEALTH_CHECK_RESPONSE_MS:-}"
     fi
 
-    # Record successful release
-    record_release "$timestamp" "success"
-    success "Release $timestamp deployed successfully"
+    # Record successful release with metadata
+    local deploy_end=$(date +%s)
+    local deploy_duration=$((deploy_end - deploy_start))
+    record_release "$timestamp" "success" "$deploy_duration" "$git_commit" "$health_attempts" "$health_response_ms" "$previous_release"
+    success "Release $timestamp deployed successfully (${deploy_duration}s)"
 
     # Run post-deploy hook
     run_post_deploy_hook
@@ -609,43 +645,81 @@ deploy_frontend_zero_downtime() {
 configure_caddy_backend() {
     info "Configuring Caddy reverse proxy for $DOMAIN..."
 
-    remote_exec bash << ENDSSH
-        set -e
+    local template_file
+    template_file=$(resolve_template "Caddyfile.caddy")
 
-        # Create conf.d directory for per-app configs
-        mkdir -p /etc/caddy/conf.d
+    if [ -n "$template_file" ]; then
+        info "Using custom Caddy template: $template_file"
+        local caddy_config
+        caddy_config=$(render_template "$template_file" \
+            DOMAIN "$DOMAIN" \
+            APP_NAME "$PM2_APP_NAME" \
+            BACKEND_PORT "$BACKEND_PORT")
 
-        # Ensure main Caddyfile imports conf.d configs
-        if [ ! -f /etc/caddy/Caddyfile ]; then
-            cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
+        remote_exec bash << ENDSSH
+            set -e
+
+            mkdir -p /etc/caddy/conf.d
+
+            if [ ! -f /etc/caddy/Caddyfile ]; then
+                cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
 # ShipNode managed Caddyfile
 # Per-app configurations are in /etc/caddy/conf.d/
 
 import /etc/caddy/conf.d/*.caddy
 MAIN_EOF
-        elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
-            # Backup existing Caddyfile
-            cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
-            # Add import if missing
-            echo "" >> /etc/caddy/Caddyfile
-            echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
-        fi
+            elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
+                echo "" >> /etc/caddy/Caddyfile
+                echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
+            fi
 
-        # Write per-app configuration
-        cat > /etc/caddy/conf.d/$PM2_APP_NAME.caddy << 'APP_EOF'
+            cat > /etc/caddy/conf.d/$PM2_APP_NAME.caddy << 'APP_EOF'
+$caddy_config
+APP_EOF
+
+            caddy reload --config /etc/caddy/Caddyfile
+ENDSSH
+    else
+        remote_exec bash << ENDSSH
+            set -e
+
+            mkdir -p /etc/caddy/conf.d
+
+            if [ ! -f /etc/caddy/Caddyfile ]; then
+                cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
+# ShipNode managed Caddyfile
+# Per-app configurations are in /etc/caddy/conf.d/
+
+import /etc/caddy/conf.d/*.caddy
+MAIN_EOF
+            elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
+                echo "" >> /etc/caddy/Caddyfile
+                echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
+            fi
+
+            cat > /etc/caddy/conf.d/$PM2_APP_NAME.caddy << 'APP_EOF'
 $DOMAIN {
     reverse_proxy localhost:$BACKEND_PORT
     encode gzip
 
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+    }
+
     log {
         output file /var/log/caddy/$PM2_APP_NAME.log
+        format json
     }
 }
 APP_EOF
 
-        # Reload Caddy
-        caddy reload --config /etc/caddy/Caddyfile
+            caddy reload --config /etc/caddy/Caddyfile
 ENDSSH
+    fi
 
     success "Caddy configured for $DOMAIN → localhost:$BACKEND_PORT"
 }
@@ -655,38 +729,67 @@ configure_caddy_frontend() {
 
     local SERVE_PATH="$REMOTE_PATH"
 
-    # Use current symlink if zero-downtime is enabled
     if [ "$ZERO_DOWNTIME" = "true" ]; then
         SERVE_PATH="$REMOTE_PATH/current"
     fi
 
-    # Derive app name from remote path for config file naming
     local APP_NAME=$(basename "$REMOTE_PATH")
 
-    remote_exec bash << ENDSSH
-        set -e
+    local template_file
+    template_file=$(resolve_template "Caddyfile.caddy")
 
-        # Create conf.d directory for per-app configs
-        mkdir -p /etc/caddy/conf.d
+    if [ -n "$template_file" ]; then
+        info "Using custom Caddy template: $template_file"
+        local caddy_config
+        caddy_config=$(render_template "$template_file" \
+            DOMAIN "$DOMAIN" \
+            APP_NAME "$APP_NAME" \
+            SERVE_PATH "$SERVE_PATH")
 
-        # Ensure main Caddyfile imports conf.d configs
-        if [ ! -f /etc/caddy/Caddyfile ]; then
-            cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
+        remote_exec bash << ENDSSH
+            set -e
+
+            mkdir -p /etc/caddy/conf.d
+
+            if [ ! -f /etc/caddy/Caddyfile ]; then
+                cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
 # ShipNode managed Caddyfile
 # Per-app configurations are in /etc/caddy/conf.d/
 
 import /etc/caddy/conf.d/*.caddy
 MAIN_EOF
-        elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
-            # Backup existing Caddyfile
-            cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
-            # Add import if missing
-            echo "" >> /etc/caddy/Caddyfile
-            echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
-        fi
+            elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
+                echo "" >> /etc/caddy/Caddyfile
+                echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
+            fi
 
-        # Write per-app configuration
-        cat > /etc/caddy/conf.d/$APP_NAME.caddy << 'APP_EOF'
+            cat > /etc/caddy/conf.d/$APP_NAME.caddy << 'APP_EOF'
+$caddy_config
+APP_EOF
+
+            caddy reload --config /etc/caddy/Caddyfile
+ENDSSH
+    else
+        remote_exec bash << ENDSSH
+            set -e
+
+            mkdir -p /etc/caddy/conf.d
+
+            if [ ! -f /etc/caddy/Caddyfile ]; then
+                cat > /etc/caddy/Caddyfile << 'MAIN_EOF'
+# ShipNode managed Caddyfile
+# Per-app configurations are in /etc/caddy/conf.d/
+
+import /etc/caddy/conf.d/*.caddy
+MAIN_EOF
+            elif ! grep -q "import /etc/caddy/conf.d/\*.caddy" /etc/caddy/Caddyfile 2>/dev/null; then
+                cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.backup
+                echo "" >> /etc/caddy/Caddyfile
+                echo "import /etc/caddy/conf.d/*.caddy" >> /etc/caddy/Caddyfile
+            fi
+
+            cat > /etc/caddy/conf.d/$APP_NAME.caddy << 'APP_EOF'
 $DOMAIN {
     root * $SERVE_PATH
     file_server
@@ -694,15 +797,23 @@ $DOMAIN {
 
     try_files {path} /index.html
 
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
     log {
         output file /var/log/caddy/$APP_NAME.log
+        format json
     }
 }
 APP_EOF
 
-        # Reload Caddy
-        caddy reload --config /etc/caddy/Caddyfile
+            caddy reload --config /etc/caddy/Caddyfile
 ENDSSH
+    fi
 
     success "Caddy configured for $DOMAIN → $SERVE_PATH"
 }

@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # ShipNode version
-VERSION="1.2.0"
+VERSION="1.3.0"
 
 # SSH multiplexing for connection reuse
 SSH_CONTROL_PATH="/tmp/shipnode-ssh-%r@%h:%p"
@@ -192,6 +192,45 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
         fi
         warn "You can install Gum manually from: https://github.com/charmbracelet/gum"
         return 1
+    fi
+}
+
+# Template rendering - replaces {{VAR}} placeholders using sed
+# Usage: render_template <template_file> [VAR_NAME VAR_VALUE]...
+# Example: render_template file.tmpl APP_NAME myapp BACKEND_PORT 3000
+render_template() {
+    local template_file="$1"
+    shift
+
+    if [ ! -f "$template_file" ]; then
+        error "Template file not found: $template_file"
+    fi
+
+    local content
+    content=$(cat "$template_file")
+
+    while [ $# -ge 2 ]; do
+        local var_name="$1"
+        local var_value="$2"
+        shift 2
+        content=$(echo "$content" | sed "s|{{${var_name}}}|${var_value}|g")
+    done
+
+    echo "$content"
+}
+
+# Find the best template file for a given config type
+# Resolution order:
+#   1. .shipnode/templates/<filename> (user customized)
+#   2. <filename> in project root (user provided)
+#   3. Returns empty string (caller falls back to built-in)
+resolve_template() {
+    local filename="$1"
+
+    if [ -f ".shipnode/templates/$filename" ]; then
+        echo ".shipnode/templates/$filename"
+    elif [ -f "$filename" ]; then
+        echo "$filename"
     fi
 }
 

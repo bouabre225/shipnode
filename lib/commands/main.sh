@@ -121,6 +121,15 @@ main() {
         harden)
             cmd_harden
             ;;
+        eject)
+            cmd_eject "${cmd_args[0]:-all}"
+            ;;
+        metrics)
+            cmd_metrics
+            ;;
+        config)
+            cmd_config "${cmd_args[@]}"
+            ;;
         help|--help|-h)
             cmd_help
             ;;

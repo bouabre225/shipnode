@@ -21,6 +21,12 @@ Global Options:
     doctor              Run pre-flight diagnostic checks
     doctor --security   Run non-destructive security audit
     harden              Interactive server security hardening wizard
+    eject               Eject PM2/Caddy templates for customization
+    eject pm2           Eject only PM2 ecosystem config template
+    eject caddy         Eject only Caddy config template
+    config              Show resolved config values
+    config validate     Validate config without deploying
+    metrics             Show real-time PM2 resource metrics (backend)
     env                 Upload .env file to server
     status              Check application status
     logs                View application logs (backend only)
@@ -45,6 +51,17 @@ User Management:
 Configuration:
     Edit shipnode.conf to configure your deployment settings.
     Supports both backend (Node.js + PM2) and frontend (static files) apps.
+
+Custom Templates:
+    Run 'shipnode eject' to create editable PM2/Caddy config templates.
+    Ejected templates are preserved across deploys.
+
+    .shipnode/templates/ecosystem.config.cjs  - PM2 process config
+    .shipnode/templates/Caddyfile.caddy        - Caddy web server config
+
+    Template variables (auto-replaced on deploy):
+      {{APP_NAME}}, {{INTERPRETER}}, {{REMOTE_PATH}}, {{BACKEND_PORT}}
+      {{DOMAIN}}, {{SERVE_PATH}}
 
 Zero-Downtime Deployment:
     ZERO_DOWNTIME=true           Enable atomic deployments (default)
@@ -91,6 +108,11 @@ Examples:
     shipnode ci github                 # Generate GitHub Actions workflow
     shipnode ci env-sync               # Sync shipnode.conf and .env to GitHub secrets
     shipnode ci env-sync --all         # Sync all without prompting
+    shipnode eject                     # Eject PM2 + Caddy templates
+    shipnode eject pm2                 # Eject only PM2 template
+    shipnode eject caddy               # Eject only Caddy template
+    shipnode config                    # Show resolved config
+    shipnode metrics                   # Show PM2 resource metrics
     shipnode user sync                 # Provision users from users.yml
     shipnode user list                 # List provisioned users
     shipnode user remove alice         # Revoke access for alice

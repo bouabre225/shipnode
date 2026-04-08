@@ -1,0 +1,42 @@
+# ShipNode Caddy Configuration (Backend / Reverse Proxy)
+# Customize this file after running 'shipnode eject caddy'
+# Changes here will be preserved across deploys
+#
+# Available variables (auto-replaced on deploy):
+#   {{DOMAIN}}        - Your domain name
+#   {{APP_NAME}}      - PM2 process name
+#   {{BACKEND_PORT}}  - Application port
+#
+# Docs: https://caddyserver.com/docs/caddyfile
+
+{{DOMAIN}} {
+    reverse_proxy localhost:{{BACKEND_PORT}}
+    encode gzip
+
+    # CORS headers (uncomment if needed)
+    # header {
+    #     Access-Control-Allow-Origin *
+    #     Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    #     Access-Control-Allow-Headers "Content-Type, Authorization"
+    # }
+
+    # WebSocket support (uncomment for Socket.io, etc.)
+    # @websockets {
+    #     header Connection *Upgrade*
+    #     header Upgrade websocket
+    # }
+    # reverse_proxy @websockets localhost:{{BACKEND_PORT}}
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        X-XSS-Protection "1; mode=block"
+    }
+
+    # Access logs (JSON format)
+    log {
+        output file /var/log/caddy/{{APP_NAME}}.log
+        format json
+    }
+}

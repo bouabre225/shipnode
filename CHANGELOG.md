@@ -5,6 +5,43 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-04-08
+
+### Added
+
+#### Config Ejection (Custom Templates)
+- **`shipnode eject`**: Eject PM2 and Caddy config templates to `.shipnode/templates/` for full customization
+- **`shipnode eject pm2`**: Eject only PM2 ecosystem config
+- **`shipnode eject caddy`**: Eject only Caddy config
+- Templates use `{{VAR}}` placeholders (APP_NAME, INTERPRETER, REMOTE_PATH, BACKEND_PORT, DOMAIN, SERVE_PATH)
+- 3-tier template resolution: ejected template > project root file > built-in default
+- Ejected templates are preserved across deploys (never overwritten)
+- New template files: `ecosystem.config.cjs.tmpl`, `Caddyfile.backend.tmpl`, `Caddyfile.frontend.tmpl`
+
+#### Observability
+- **`shipnode status`**: Complete rewrite with rich dashboard showing PM2 status, uptime, CPU, memory, release history, disk usage
+- **`shipnode status`** (frontend): Now shows file count, size, release info, Caddy status (was just `ls -lh`)
+- **`shipnode metrics`**: New command - opens PM2 real-time monitoring dashboard over SSH
+- **Deployment metadata**: Every deployment now records duration, git commit, health check attempts and response time
+- **Enhanced releases.json**: Rich schema with `duration_seconds`, `commit`, `health_check`, `previous_release` fields
+
+#### Config Management
+- **`shipnode config`**: New command to show resolved config values (secrets redacted)
+- **`shipnode config validate`**: Validate config file without deploying
+- **`shipnode config path`**: Show config file path
+
+### Changed
+- PM2 config generation checks for ejected templates before using inline defaults
+- Caddy config generation checks for ejected templates before using inline defaults
+- Default Caddy configs now include security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+- Default frontend Caddy config includes Referrer-Policy header and JSON-formatted logs
+- Health check timing now tracked (attempts count and response time in milliseconds)
+- Deploy duration tracked from start to finish
+- Git commit hash recorded in release history (best-effort)
+- `.shipnode/` directory excluded from rsync (prevents local templates from syncing)
+- README completely rewritten with clearer structure and "How It Works" section
+- ARCHITECTURE.md updated with all new modules
+
 ## [1.2.0] - 2026-02-22
 
 ### Added
