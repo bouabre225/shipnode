@@ -4,52 +4,55 @@ This document describes the internal architecture and module organization of Shi
 
 ## Overview
 
-ShipNode is organized as a modular bash project to improve maintainability, testability, and collaboration. The codebase is split into 21 focused modules, each with a single responsibility.
+ShipNode is organized as a modular bash project to improve maintainability, testability, and collaboration. The codebase is split into focused modules, each with a single responsibility.
+
+**Total: ~8,350 lines** across 26 modules.
 
 ## Directory Structure
 
 ```
 shipnode/
-├── shipnode                    # Main entry point (sources all modules)
+├── shipnode                    # Main entry point (50 lines)
 ├── lib/
-│   ├── core.sh                # Core utilities, globals, template rendering
-│   ├── pkg-manager.sh         # Package manager detection + PM2 template generation
-│   ├── release.sh             # Release management with metadata tracking
-│   ├── database.sh            # Database operations
-│   ├── users.sh               # User provisioning helpers
-│   ├── framework.sh           # Framework detection
-│   ├── validation.sh          # Input validation
-│   ├── prompts.sh             # Interactive prompts + Gum UI
-│   ├── templates.sh           # Framework preset configurations
+│   ├── core.sh                # Core utilities, globals, template rendering (247 lines)
+│   ├── pkg-manager.sh         # Package manager detection + PM2 template generation (236 lines)
+│   ├── release.sh             # Release management with metadata tracking (263 lines)
+│   ├── database.sh            # Database operations (96 lines)
+│   ├── users.sh               # User provisioning helpers (352 lines)
+│   ├── framework.sh           # Framework detection (259 lines)
+│   ├── validation.sh          # Input validation (287 lines)
+│   ├── prompts.sh             # Interactive prompts + Gum UI (178 lines)
+│   ├── templates.sh           # Framework preset configurations (172 lines)
 │   └── commands/              # Command implementations
-│       ├── config.sh          # Configuration loading
-│       ├── users-yaml.sh      # Users.yml generation
-│       ├── user.sh            # User management commands
-│       ├── mkpasswd.sh        # Password generation
-│       ├── init.sh            # Initialize command
-│       ├── setup.sh           # Setup command
-│       ├── deploy.sh          # Deploy command (template-aware)
-│       ├── doctor.sh          # Diagnostics command
-│       ├── status.sh          # Rich status dashboard
-│       ├── unlock.sh          # Unlock command
-│       ├── rollback.sh        # Rollback command
-│       ├── migrate.sh         # Migrate command
-│       ├── env.sh             # Environment upload
-│       ├── eject.sh           # Eject PM2/Caddy templates
-│       ├── metrics.sh         # PM2 resource monitoring
-│       ├── config-cmd.sh      # Config show/validate/path
-│       ├── upgrade.sh         # Upgrade command
-│       ├── ci.sh              # CI/CD commands
-│       ├── harden.sh          # Security hardening
-│       ├── help.sh            # Help command
-│       └── main.sh            # Main dispatcher
+│       ├── config.sh          # Configuration loading (110 lines)
+│       ├── users-yaml.sh      # Users.yml generation (153 lines)
+│       ├── user.sh            # User management commands (207 lines)
+│       ├── mkpasswd.sh        # Password generation (36 lines)
+│       ├── init.sh            # Initialize command (2007 lines)
+│       ├── setup.sh           # Setup command (108 lines)
+│       ├── deploy.sh          # Deploy command (819 lines)
+│       ├── doctor.sh          # Diagnostics command (603 lines)
+│       ├── status.sh          # Rich status dashboard (336 lines)
+│       ├── unlock.sh          # Unlock command (40 lines)
+│       ├── rollback.sh        # Rollback command (86 lines)
+│       ├── migrate.sh         # Migrate command (92 lines)
+│       ├── env.sh             # Environment upload (42 lines)
+│       ├── eject.sh           # Eject PM2/Caddy templates (266 lines)
+│       ├── metrics.sh         # PM2 resource monitoring (12 lines)
+│       ├── config-cmd.sh      # Config show/validate/path (137 lines)
+│       ├── upgrade.sh         # Upgrade command (104 lines)
+│       ├── ci.sh              # CI/CD commands (362 lines)
+│       ├── harden.sh          # Security hardening (476 lines)
+│       ├── help.sh            # Help command (129 lines)
+│       └── main.sh            # Main dispatcher (143 lines)
 ├── templates/                 # Ejectable template files
 │   ├── ecosystem.config.cjs.tmpl  # PM2 config template
-│   ├── Caddyfile.backend.tmpl     # Backend Caddy template
+│   ├── Caddyfile.backend.tmpl      # Backend Caddy template
 │   ├── Caddyfile.frontend.tmpl    # Frontend Caddy template
-│   ├── pre-deploy.sh.template     # Pre-deploy hook template
-│   └── post-deploy.sh.template    # Post-deploy hook template
-├── build.sh                   # Build script for distribution
+│   ├── pre-deploy.sh.template      # Pre-deploy hook template
+│   ├── post-deploy.sh.template     # Post-deploy hook template
+│   └── shipnodeignore.template     # .shipnodeignore template
+├── build.sh                   # Build script for distribution (81 lines)
 └── examples/                  # Example projects
 ```
 
@@ -92,7 +95,8 @@ Modules are loaded in a specific order to ensure dependencies are available:
 
 ### Core Modules
 
-#### core.sh (240 lines)
+#### core.sh (247 lines)
+
 **Purpose:** Global variables, colors, logging functions, OS detection, Gum installation, template rendering
 
 **Key Functions:**
@@ -108,7 +112,8 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `VERSION` - ShipNode version
 - `USE_GUM` - Enhanced UI flag
 
-#### release.sh (180 lines)
+#### release.sh (263 lines)
+
 **Purpose:** Zero-downtime deployment release management with deployment metadata tracking
 
 **Key Functions:**
@@ -124,13 +129,16 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `cleanup_old_releases()` - Remove old releases
 - `rollback_to_release()` - Rollback to specific release
 
-#### database.sh (70 lines)
-**Purpose:** PostgreSQL setup and management
+#### database.sh (96 lines)
+
+**Purpose:** Database setup and management operations
 
 **Key Functions:**
-- `setup_postgresql()` - Install and configure PostgreSQL
+- `setup_database()` - Install and configure database
+- `run_migrations()` - Execute database migrations
 
-#### users.sh (78 lines)
+#### users.sh (352 lines)
+
 **Purpose:** User provisioning helper functions
 
 **Key Functions:**
@@ -142,7 +150,8 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `validate_email()` - Validate email format
 - `read_key_file()` - Read SSH key from file
 
-#### framework.sh (219 lines)
+#### framework.sh (259 lines)
+
 **Purpose:** Framework detection from package.json
 
 **Key Functions:**
@@ -152,11 +161,12 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `suggest_port()` - Auto-detect port from scripts
 
 **Supported Frameworks:**
-- Backend: Express, NestJS, Fastify, Koa, Hapi, Hono, AdonisJS
+- Backend: Express, NestJS, Fastify, Koa, Hono, AdonisJS
 - Full-stack: Next.js, Nuxt, Remix, Astro
-- Frontend: React, React Router, TanStack Router, Vue, Svelte, SolidJS, Angular
+- Frontend: React, Vue, Svelte, SolidJS, Angular
 
-#### validation.sh (124 lines)
+#### validation.sh (287 lines)
+
 **Purpose:** Input validation functions
 
 **Key Functions:**
@@ -166,14 +176,9 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `validate_pm2_app_name()` - Validate PM2 process name
 - `test_ssh_connection()` - Test SSH connectivity
 - `parse_users_yaml()` - Parse users.yml file
-- `create_remote_user()` - Create user on remote server
-- `setup_user_ssh_dir()` - Setup SSH directory for user
-- `add_user_ssh_key()` - Add SSH key to user
-- `grant_deploy_permissions()` - Grant deployment permissions
-- `grant_sudo_access()` - Grant sudo access
-- `revoke_user_access()` - Revoke user access
 
 #### prompts.sh (178 lines)
+
 **Purpose:** Interactive prompts with Gum UI support
 
 **Key Functions:**
@@ -185,21 +190,32 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `gum_style()` - Enhanced styling with Gum fallback
 - `show_gum_tip()` - Show Gum installation tip
 
+#### templates.sh (172 lines)
+
+**Purpose:** Framework preset configurations and template management
+
+**Key Functions:**
+- `load_template()` - Load framework preset templates
+- `get_framework_config()` - Get preset configuration for framework
+
 ### Command Modules
 
-#### commands/config.sh (55 lines)
+#### commands/config.sh (110 lines)
+
 **Purpose:** Configuration file loading
 
 **Key Functions:**
 - `load_config()` - Load and validate shipnode.conf
 
 #### commands/users-yaml.sh (153 lines)
+
 **Purpose:** Interactive users.yml generation
 
 **Key Functions:**
 - `init_users_yaml()` - Generate users.yml interactively
 
 #### commands/user.sh (207 lines)
+
 **Purpose:** User management commands
 
 **Key Functions:**
@@ -208,72 +224,80 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `cmd_user_remove()` - Remove user access
 
 #### commands/mkpasswd.sh (36 lines)
+
 **Purpose:** Password hash generation
 
 **Key Functions:**
 - `cmd_mkpasswd()` - Generate password hash for users.yml
 
-#### commands/init.sh (479 lines)
-**Purpose:** Initialize project configuration
+#### commands/init.sh (2007 lines)
+
+**Purpose:** Initialize project configuration (largest module)
 
 **Key Functions:**
-- `cmd_init_legacy()` - Legacy non-interactive init
+- `cmd_init()` - Main init command router
 - `cmd_init_interactive()` - Interactive wizard
-- `cmd_init()` - Router function
+- `detect_framework()` - Detect project framework
+- `generate_config()` - Generate shipnode.conf
 
-#### commands/setup.sh (79 lines)
+#### commands/setup.sh (108 lines)
+
 **Purpose:** First-time server setup
 
 **Key Functions:**
 - `cmd_setup()` - Setup server (Node, PM2, Caddy, jq)
 
-#### commands/deploy.sh (500 lines)
+#### commands/deploy.sh (819 lines)
+
 **Purpose:** Deploy applications with template-aware PM2 and Caddy config generation
 
 **Key Functions:**
 - `cmd_deploy()` - Main deploy command
 - `cmd_deploy_dry_run()` - Preview deployment without executing
 - `deploy_backend()` - Deploy backend application
-- `deploy_backend_legacy()` - Legacy backend deploy
 - `deploy_backend_zero_downtime()` - Zero-downtime backend deploy with duration/commit tracking
 - `deploy_frontend()` - Deploy frontend application
-- `deploy_frontend_legacy()` - Legacy frontend deploy
 - `deploy_frontend_zero_downtime()` - Zero-downtime frontend deploy
-- `configure_caddy_backend()` - Configure Caddy for backend (checks for ejected templates)
-- `configure_caddy_frontend()` - Configure Caddy for frontend (checks for ejected templates)
+- `configure_caddy_backend()` - Configure Caddy for backend
+- `configure_caddy_frontend()` - Configure Caddy for frontend
 
-#### commands/status.sh (200 lines)
-**Purpose:** Application status dashboard with rich output for backend and frontend
+#### commands/status.sh (336 lines)
+
+**Purpose:** Application status dashboard with rich output
 
 **Key Functions:**
-- `cmd_status()` - Check application status (routes to backend/frontend)
+- `cmd_status()` - Check application status
 - `cmd_status_backend()` - Rich PM2 dashboard: status, uptime, CPU, memory, releases, disk
 - `cmd_status_frontend()` - Frontend status: file count, size, release, Caddy status
-- `cmd_logs()` - View application logs (backend only)
+- `cmd_logs()` - View application logs
 - `cmd_restart()` - Restart application
 - `cmd_stop()` - Stop application
 
 #### commands/unlock.sh (40 lines)
+
 **Purpose:** Clear deployment lock
 
 **Key Functions:**
 - `cmd_unlock()` - Clear stuck deployment lock
 
-#### commands/eject.sh (150 lines)
+#### commands/eject.sh (266 lines)
+
 **Purpose:** Eject PM2/Caddy config templates for user customization
 
 **Key Functions:**
 - `cmd_eject()` - Eject templates (pm2, caddy, or all)
 - `eject_pm2()` - Copy PM2 ecosystem template to `.shipnode/templates/`
-- `eject_caddy()` - Copy Caddy template to `.shipnode/templates/` (backend or frontend)
+- `eject_caddy()` - Copy Caddy template to `.shipnode/templates/`
 
-#### commands/metrics.sh (15 lines)
+#### commands/metrics.sh (12 lines)
+
 **Purpose:** Real-time PM2 resource monitoring
 
 **Key Functions:**
 - `cmd_metrics()` - Open PM2 monit dashboard over SSH
 
-#### commands/config-cmd.sh (100 lines)
+#### commands/config-cmd.sh (137 lines)
+
 **Purpose:** Config inspection and validation
 
 **Key Functions:**
@@ -282,35 +306,89 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `cmd_config_validate()` - Validate config file without deploying
 
 #### commands/rollback.sh (86 lines)
+
 **Purpose:** Rollback to previous releases
 
 **Key Functions:**
 - `cmd_rollback()` - Rollback to previous release
 - `cmd_releases()` - List available releases
 
-#### commands/migrate.sh (84 lines)
+#### commands/migrate.sh (92 lines)
+
 **Purpose:** Migrate existing deployments
 
 **Key Functions:**
 - `cmd_migrate()` - Migrate to release structure
 
-#### commands/env.sh (39 lines)
+#### commands/env.sh (42 lines)
+
 **Purpose:** Environment variable management
 
 **Key Functions:**
 - `cmd_env()` - Upload .env file to server
 
-#### commands/help.sh (64 lines)
+#### commands/ci.sh (362 lines)
+
+**Purpose:** CI/CD integration commands
+
+**Key Functions:**
+- `cmd_ci()` - Route CI subcommands
+- `cmd_ci_github()` - Generate GitHub Actions workflow
+- `cmd_ci_env_sync()` - Sync secrets to GitHub
+
+#### commands/harden.sh (476 lines)
+
+**Purpose:** Server security hardening
+
+**Key Functions:**
+- `cmd_harden()` - Interactive security hardening wizard
+- `harden_ssh()` - SSH hardening options
+- `harden_firewall()` - UFW firewall setup
+- `harden_fail2ban()` - Install and configure fail2ban
+
+#### commands/doctor.sh (603 lines)
+
+**Purpose:** Diagnostics and pre-flight checks
+
+**Key Functions:**
+- `cmd_doctor()` - Run diagnostic checks
+- `check_ssh()` - Verify SSH connectivity
+- `check_dependencies()` - Check server dependencies
+- `check_disk_space()` - Verify sufficient disk space
+
+#### commands/help.sh (129 lines)
+
 **Purpose:** Display help information
 
 **Key Functions:**
 - `cmd_help()` - Show help message
 
-#### commands/main.sh (70 lines)
+#### commands/main.sh (143 lines)
+
 **Purpose:** Main entry point and command dispatcher
 
 **Key Functions:**
 - `main()` - Parse arguments and dispatch to commands
+
+#### commands/upgrade.sh (104 lines)
+
+**Purpose:** Self-upgrade ShipNode
+
+**Key Functions:**
+- `cmd_upgrade()` - Upgrade ShipNode to latest version
+
+## Template Files
+
+Templates are located in `templates/` and used for ejection or direct deployment:
+
+| File | Purpose |
+|------|---------|
+| `ecosystem.config.cjs.tmpl` | PM2 process manager configuration |
+| `Caddyfile.backend.tmpl` | Caddy reverse proxy for backend apps |
+| `Caddyfile.frontend.tmpl` | Caddy static file server for frontends |
+| `pre-deploy.sh.template` | Pre-deploy hook script |
+| `post-deploy.sh.template` | Post-deploy hook script |
+| `shipnodeignore.template` | Default exclusions for rsync |
 
 ## Adding New Commands
 
