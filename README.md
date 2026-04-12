@@ -44,7 +44,7 @@ cd shipnode
 ./shipnode help
 ```
 
-See [INSTALL.md](INSTALL.md) for details. Uninstall: `rm -rf ~/.shipnode`
+See [Installation](docs/getting-started/installation.md) for details. Uninstall: `rm -rf ~/.shipnode`
 
 ### 2. Init
 
@@ -676,6 +676,18 @@ Customize with `.shipnodeignore` (like `.gitignore`).
 
 ---
 
+## Documentation
+
+For detailed guides and reference documentation, see the [docs/](docs/) folder:
+
+- [Getting Started](docs/getting-started/) - Installation, quick start, first deploy
+- [Guides](docs/guides/) - Deployment, configuration, hooks, security, CI/CD
+- [Reference](docs/reference/) - Commands, frameworks, troubleshooting
+- [Examples](docs/examples/) - Express, NestJS, Next.js, React examples
+- [Advanced](docs/advanced/) - Architecture, contributing, distribution
+
+---
+
 ## Project Structure
 
 ```
@@ -715,7 +727,7 @@ shipnode/
 └── build.sh                          # Bundle into single file
 ```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for module documentation.
+See [Architecture](docs/advanced/architecture.md) for module documentation.
 
 ---
 
