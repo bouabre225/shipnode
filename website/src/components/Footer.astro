@@ -1,0 +1,51 @@
+---
+---
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <span class="footer-brand">ShipNode</span>
+      <span class="footer-sep">·</span>
+      <span class="footer-text">Deploy Node.js apps with a single command</span>
+    </div>
+    <div class="footer-right">
+      <a href="https://github.com/devalade/shipnode" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/devalade/shipnode/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    border-top: 1px solid var(--border-primary);
+    padding: var(--space-xl);
+  }
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-md);
+  }
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 0.8125rem;
+  }
+  .footer-brand { font-weight: 600; color: var(--text-primary); }
+  .footer-sep { color: var(--text-muted); }
+  .footer-text { color: var(--text-tertiary); }
+  .footer-right {
+    display: flex;
+    gap: var(--space-lg);
+  }
+  .footer-right a {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+    transition: color var(--transition-fast);
+  }
+  .footer-right a:hover { color: var(--text-primary); }
+</style>

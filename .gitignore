@@ -3,6 +3,10 @@
 # Build output
 dist/
 
+# Website
+website/node_modules/
+website/dist/
+
 # Bundled version (auto-generated via build.sh)
 shipnode-bundled
 

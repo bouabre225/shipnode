@@ -1,0 +1,153 @@
+---
+---
+
+<section class="how-it-works" id="how-it-works">
+  <div class="container">
+    <span class="section-label">How it works</span>
+    <h2>Three commands.<br />That's it.</h2>
+    <p class="section-desc">From zero to production in under 5 minutes. ShipNode handles building, syncing, process management, reverse proxying, and HTTPS.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h3>Initialize</h3>
+          <p>Auto-detects your framework, suggests defaults, creates config.</p>
+          <div class="step-code"><code>$ shipnode init</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h3>Setup server</h3>
+          <p>Installs Node.js, PM2, and Caddy on your server. Run once.</p>
+          <div class="step-code"><code>$ shipnode setup</code></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h3>Deploy</h3>
+          <p>Zero-downtime deploy with health checks and auto-rollback.</p>
+          <div class="step-code"><code>$ shipnode deploy</code></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram">
+      <div class="diagram-card">
+        <pre><code><span class="d-muted">Your Laptop</span>                    <span class="d-muted">Your Server</span>
+<span class="d-muted">──────────────</span>                  <span class="d-muted">────────────</span>
+shipnode deploy  <span class="d-accent">───rsync──▶</span>   /var/www/myapp/
+                                 ├── <span class="d-green">current/</span>       <span class="d-muted">← active release</span>
+                                 ├── releases/      <span class="d-muted">← timestamped</span>
+                                 ├── shared/.env    <span class="d-muted">← persistent</span>
+                                 └── <span class="d-blue">PM2 + Caddy</span>    <span class="d-muted">← process + HTTPS</span></code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .how-it-works {
+    padding: var(--space-4xl) var(--space-xl);
+    border-top: 1px solid var(--border-primary);
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .section-label {
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-md);
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-md);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 1.0625rem;
+    max-width: 540px;
+    line-height: 1.7;
+    margin-bottom: var(--space-3xl);
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-lg);
+    margin-bottom: var(--space-3xl);
+  }
+  .step {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  }
+  .step:hover {
+    border-color: var(--border-accent);
+    box-shadow: var(--shadow-glow);
+  }
+  .step-number {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-glow);
+    color: var(--accent-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-bottom: var(--space-md);
+  }
+  .step h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: var(--space-xs);
+  }
+  .step p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--space-md);
+  }
+  .step-code {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--accent-hover);
+    background: var(--bg-code);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-primary);
+  }
+  .diagram-card {
+    background: var(--bg-code);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    overflow-x: auto;
+    box-shadow: var(--shadow-md);
+  }
+  .diagram-card pre {
+    font-size: 0.8125rem;
+    line-height: 1.65;
+  }
+  .d-muted { color: var(--text-tertiary); }
+  .d-accent { color: var(--accent-hover); }
+  .d-green { color: var(--green); }
+  .d-blue { color: #60a5fa; }
+
+  @media (max-width: 768px) {
+    .steps { grid-template-columns: 1fr; }
+  }
+</style>

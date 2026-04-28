@@ -1,0 +1,136 @@
+---
+const groups = [
+  {
+    label: "Setup",
+    commands: [
+      { cmd: "shipnode init", desc: "Interactive config wizard" },
+      { cmd: "shipnode setup", desc: "Install Node.js, PM2, Caddy on server" },
+    ],
+  },
+  {
+    label: "Deploy",
+    commands: [
+      { cmd: "shipnode deploy", desc: "Deploy your app" },
+      { cmd: "shipnode deploy --dry-run", desc: "Preview without deploying" },
+      { cmd: "shipnode rollback", desc: "Rollback to previous release" },
+    ],
+  },
+  {
+    label: "Monitor",
+    commands: [
+      { cmd: "shipnode status", desc: "Rich status dashboard" },
+      { cmd: "shipnode logs", desc: "Stream live PM2 logs" },
+      { cmd: "shipnode metrics", desc: "Real-time CPU/memory" },
+    ],
+  },
+  {
+    label: "Manage",
+    commands: [
+      { cmd: "shipnode eject", desc: "Eject PM2 + Caddy templates" },
+      { cmd: "shipnode harden", desc: "Server security hardening" },
+      { cmd: "shipnode doctor", desc: "Pre-flight diagnostics" },
+      { cmd: "shipnode ci github", desc: "Generate CI/CD workflow" },
+    ],
+  },
+];
+---
+
+<section class="commands" id="commands">
+  <div class="container">
+    <span class="section-label">Commands</span>
+    <h2>One tool, many powers.</h2>
+    <p class="section-desc">Every command you need to deploy, monitor, and manage your Node.js apps.</p>
+
+    <div class="cmd-grid">
+      {groups.map((g) => (
+        <div class="cmd-group">
+          <h3 class="cmd-group-label">{g.label}</h3>
+          <div class="cmd-list">
+            {g.commands.map((c) => (
+              <div class="cmd-item">
+                <code class="cmd-name">{c.cmd}</code>
+                <span class="cmd-desc">{c.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .commands {
+    padding: var(--space-4xl) var(--space-xl);
+    border-top: 1px solid var(--border-primary);
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  .section-label {
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-md);
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-md);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 1.0625rem;
+    max-width: 480px;
+    line-height: 1.7;
+    margin-bottom: var(--space-3xl);
+  }
+  .cmd-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-lg);
+  }
+  .cmd-group {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    transition: border-color var(--transition-base);
+  }
+  .cmd-group:hover { border-color: var(--border-accent); }
+  .cmd-group-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-md);
+  }
+  .cmd-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+  .cmd-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-md);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .cmd-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .cmd-name {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--accent-hover);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .cmd-desc {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 700px) {
+    .cmd-grid { grid-template-columns: 1fr; }
+  }
+</style>

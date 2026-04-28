@@ -1,0 +1,147 @@
+---
+const frameworks = [
+  { name: "Express", type: "Backend" },
+  { name: "NestJS", type: "Backend" },
+  { name: "Fastify", type: "Backend" },
+  { name: "Koa", type: "Backend" },
+  { name: "Hono", type: "Backend" },
+  { name: "AdonisJS", type: "Backend" },
+  { name: "Next.js", type: "Full-stack" },
+  { name: "Nuxt", type: "Full-stack" },
+  { name: "Remix", type: "Full-stack" },
+  { name: "Astro", type: "Full-stack" },
+  { name: "React", type: "Frontend" },
+  { name: "Vue", type: "Frontend" },
+  { name: "Svelte", type: "Frontend" },
+  { name: "Angular", type: "Frontend" },
+  { name: "SolidJS", type: "Frontend" },
+];
+
+const pkgManagers = ["npm", "yarn", "pnpm", "bun"];
+---
+
+<section class="frameworks" id="frameworks">
+  <div class="container">
+    <span class="section-label">Compatibility</span>
+    <h2>Works with your stack.</h2>
+    <p class="section-desc">Auto-detected from your package.json. No configuration needed.</p>
+
+    <div class="fw-grid">
+      {frameworks.map((f) => (
+        <div class="fw-chip">
+          <span class="fw-name">{f.name}</span>
+          <span class={`fw-type fw-type--${f.type.toLowerCase().replace("-", "")}`}>{f.type}</span>
+        </div>
+      ))}
+    </div>
+
+    <div class="pkg-section">
+      <h3>Package Managers</h3>
+      <div class="pkg-list">
+        {pkgManagers.map((pm) => (
+          <div class="pkg-chip">
+            <code>{pm}</code>
+          </div>
+        ))}
+      </div>
+      <p class="pkg-note">Auto-detected from lockfiles. Override with <code>PKG_MANAGER</code> in config.</p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .frameworks {
+    padding: var(--space-4xl) var(--space-xl);
+    border-top: 1px solid var(--border-primary);
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  .section-label {
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-md);
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-md);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 1.0625rem;
+    max-width: 480px;
+    line-height: 1.7;
+    margin-bottom: var(--space-2xl);
+  }
+  .fw-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-3xl);
+  }
+  .fw-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-full);
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: border-color var(--transition-fast), transform var(--transition-fast);
+  }
+  .fw-chip:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-1px);
+  }
+  .fw-type {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.125rem 0.5rem;
+    border-radius: var(--radius-full);
+  }
+  .fw-type--backend { color: var(--green); background: var(--green-muted); }
+  .fw-type--fullstack { color: var(--accent-hover); background: var(--accent-glow); }
+  .fw-type--frontend { color: var(--amber); background: var(--amber-muted); }
+
+  .pkg-section h3 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: var(--space-md);
+  }
+  .pkg-list {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-md);
+  }
+  .pkg-chip {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.375rem 0.875rem;
+  }
+  .pkg-chip code {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+  }
+  .pkg-note {
+    font-size: 0.8125rem;
+    color: var(--text-tertiary);
+  }
+  .pkg-note code {
+    color: var(--accent-hover);
+    font-size: 0.8125rem;
+  }
+</style>

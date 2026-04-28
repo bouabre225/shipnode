@@ -1,0 +1,131 @@
+---
+const features = [
+  {
+    icon: "⚡",
+    title: "Zero-Downtime Deploys",
+    desc: "Atomic symlink switching with timestamped releases. Your users never see downtime.",
+  },
+  {
+    icon: "🔒",
+    title: "Automatic HTTPS",
+    desc: "Caddy handles Let's Encrypt certificates. Just set your domain and you're done.",
+  },
+  {
+    icon: "♻️",
+    title: "Instant Rollbacks",
+    desc: "Health checks fail? Auto-rollback. Need to revert? One command.",
+  },
+  {
+    icon: "🔍",
+    title: "Health Checks",
+    desc: "Automated endpoint validation after every deploy with configurable retries.",
+  },
+  {
+    icon: "🛡️",
+    title: "Server Hardening",
+    desc: "Interactive wizard to harden SSH, configure firewall, and set up fail2ban.",
+  },
+  {
+    icon: "📦",
+    title: "Framework Detection",
+    desc: "Auto-detects Express, NestJS, Next.js, AdonisJS, React, Vue, and 10+ more.",
+  },
+  {
+    icon: "⚙️",
+    title: "Ejectable Templates",
+    desc: "Customize PM2 and Caddy configs. Eject, edit, and they persist across deploys.",
+  },
+  {
+    icon: "🚀",
+    title: "CI/CD Ready",
+    desc: "Generate GitHub Actions workflows and sync secrets with one command.",
+  },
+];
+---
+
+<section class="features" id="features">
+  <div class="container">
+    <span class="section-label">Features</span>
+    <h2>Everything you need.<br />Nothing you don't.</h2>
+    <p class="section-desc">Pure bash. No runtime dependencies. Works on any Ubuntu/Debian server with SSH access.</p>
+    <div class="feature-grid">
+      {features.map((f) => (
+        <div class="feature-card">
+          <span class="feature-icon">{f.icon}</span>
+          <h3>{f.title}</h3>
+          <p>{f.desc}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .features {
+    padding: var(--space-4xl) var(--space-xl);
+    border-top: 1px solid var(--border-primary);
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  .section-label {
+    display: inline-block;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--space-md);
+  }
+  h2 {
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-md);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 1.0625rem;
+    max-width: 480px;
+    line-height: 1.7;
+    margin-bottom: var(--space-3xl);
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-xl);
+    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
+  }
+  .feature-card:hover {
+    border-color: var(--border-accent);
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+  }
+  .feature-icon {
+    font-size: 1.5rem;
+    display: block;
+    margin-bottom: var(--space-md);
+  }
+  .feature-card h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: var(--space-xs);
+  }
+  .feature-card p {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  @media (max-width: 900px) {
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 500px) {
+    .feature-grid { grid-template-columns: 1fr; }
+  }
+</style>
