@@ -1,153 +1,190 @@
 ---
+const steps = [
+  {
+    label: "01",
+    title: "Detect",
+    copy: "Reads package.json and lockfiles to infer Express, NestJS, Next.js, Astro, React, Vue, Svelte, npm, yarn, pnpm, or bun.",
+    command: "shipnode init",
+  },
+  {
+    label: "02",
+    title: "Prepare",
+    copy: "Installs Node.js, PM2, Caddy, jq, and the matching package manager on Ubuntu or Debian. This is the one-time server pass.",
+    command: "shipnode setup",
+  },
+  {
+    label: "03",
+    title: "Release",
+    copy: "Builds, syncs, creates a timestamped release, switches the current symlink, reloads PM2, and checks health before declaring victory.",
+    command: "shipnode deploy",
+  },
+];
 ---
 
-<section class="how-it-works" id="how-it-works">
-  <div class="container">
-    <span class="section-label">How it works</span>
-    <h2>Three commands.<br />That's it.</h2>
-    <p class="section-desc">From zero to production in under 5 minutes. ShipNode handles building, syncing, process management, reverse proxying, and HTTPS.</p>
-
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">1</div>
-        <div class="step-content">
-          <h3>Initialize</h3>
-          <p>Auto-detects your framework, suggests defaults, creates config.</p>
-          <div class="step-code"><code>$ shipnode init</code></div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <div class="step-content">
-          <h3>Setup server</h3>
-          <p>Installs Node.js, PM2, and Caddy on your server. Run once.</p>
-          <div class="step-code"><code>$ shipnode setup</code></div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <div class="step-content">
-          <h3>Deploy</h3>
-          <p>Zero-downtime deploy with health checks and auto-rollback.</p>
-          <div class="step-code"><code>$ shipnode deploy</code></div>
-        </div>
-      </div>
+<section class="shell-section how-it-works" id="how-it-works">
+  <div class="shell-container layout">
+    <div class="intro">
+      <p class="section-kicker">Release path</p>
+      <h2 class="section-title">Three commands with an audit trail.</h2>
+      <p class="section-copy">
+        ShipNode stays intentionally boring on the server: timestamped folders, a shared env file,
+        an atomic symlink, PM2 for processes, and Caddy for HTTPS.
+      </p>
     </div>
 
-    <div class="diagram">
-      <div class="diagram-card">
-        <pre><code><span class="d-muted">Your Laptop</span>                    <span class="d-muted">Your Server</span>
-<span class="d-muted">──────────────</span>                  <span class="d-muted">────────────</span>
-shipnode deploy  <span class="d-accent">───rsync──▶</span>   /var/www/myapp/
-                                 ├── <span class="d-green">current/</span>       <span class="d-muted">← active release</span>
-                                 ├── releases/      <span class="d-muted">← timestamped</span>
-                                 ├── shared/.env    <span class="d-muted">← persistent</span>
-                                 └── <span class="d-blue">PM2 + Caddy</span>    <span class="d-muted">← process + HTTPS</span></code></pre>
+    <div class="flow" aria-label="ShipNode deployment flow">
+      {steps.map((step) => (
+        <article class="flow-step">
+          <span class="step-label">{step.label}</span>
+          <div>
+            <h3>{step.title}</h3>
+            <p>{step.copy}</p>
+            <code>{step.command}</code>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    <div class="diagram" aria-label="Server release directory structure">
+      <div class="diagram-heading">
+        <span>/var/www/myapp</span>
+        <span>zero downtime layout</span>
       </div>
+      <pre><code>current -> releases/20260428194612
+releases/
+  20260428180603/
+  20260428194612/
+shared/
+  .env
+  ecosystem.config.cjs
+.shipnode/
+  releases.json
+  deploy.lock</code></pre>
     </div>
   </div>
 </section>
 
 <style>
-  .how-it-works {
-    padding: var(--space-4xl) var(--space-xl);
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.7fr) minmax(360px, 0.9fr);
+    grid-template-areas:
+      "intro flow"
+      "diagram flow";
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: start;
+  }
+
+  .intro {
+    grid-area: intro;
+  }
+
+  .section-title {
+    margin-top: 1rem;
+    max-width: 650px;
+  }
+
+  .section-copy {
+    margin-top: 1.25rem;
+  }
+
+  .flow {
+    grid-area: flow;
+    display: grid;
+    gap: 0;
     border-top: 1px solid var(--border-primary);
   }
-  .container {
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  .section-label {
-    display: inline-block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--accent-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: var(--space-md);
-  }
-  h2 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-md);
-  }
-  .section-desc {
-    color: var(--text-secondary);
-    font-size: 1.0625rem;
-    max-width: 540px;
-    line-height: 1.7;
-    margin-bottom: var(--space-3xl);
-  }
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--space-lg);
-    margin-bottom: var(--space-3xl);
-  }
-  .step {
-    background: var(--bg-card);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xl);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base);
-  }
-  .step:hover {
-    border-color: var(--border-accent);
-    box-shadow: var(--shadow-glow);
-  }
-  .step-number {
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    background: var(--accent-glow);
-    color: var(--accent-hover);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.875rem;
-    font-weight: 600;
-    margin-bottom: var(--space-md);
-  }
-  .step h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin-bottom: var(--space-xs);
-  }
-  .step p {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: var(--space-md);
-  }
-  .step-code {
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--accent-hover);
-    background: var(--bg-code);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-primary);
-  }
-  .diagram-card {
-    background: var(--bg-code);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xl);
-    overflow-x: auto;
-    box-shadow: var(--shadow-md);
-  }
-  .diagram-card pre {
-    font-size: 0.8125rem;
-    line-height: 1.65;
-  }
-  .d-muted { color: var(--text-tertiary); }
-  .d-accent { color: var(--accent-hover); }
-  .d-green { color: var(--green); }
-  .d-blue { color: #60a5fa; }
 
-  @media (max-width: 768px) {
-    .steps { grid-template-columns: 1fr; }
+  .flow-step {
+    display: grid;
+    grid-template-columns: 4.2rem minmax(0, 1fr);
+    gap: 1.2rem;
+    padding: clamp(1.25rem, 3vw, 2rem) 0;
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .step-label {
+    color: var(--accent-hover);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding-top: 0.22rem;
+  }
+
+  h3 {
+    font-size: clamp(1.35rem, 2.5vw, 2rem);
+    line-height: 1;
+    letter-spacing: -0.035em;
+  }
+
+  .flow-step p {
+    margin-top: 0.65rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    text-wrap: pretty;
+  }
+
+  .flow-step code {
+    display: inline-block;
+    margin-top: 1rem;
+    color: var(--text-primary);
+    background: var(--bg-code);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.65rem;
+    font-size: 0.78rem;
+  }
+
+  .diagram {
+    grid-area: diagram;
+    align-self: end;
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-soft);
+    overflow: hidden;
+  }
+
+  .diagram-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--border-primary);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .diagram-heading span:first-child {
+    color: var(--accent-hover);
+  }
+
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    color: var(--text-secondary);
+    font-size: clamp(0.74rem, 1.4vw, 0.86rem);
+    line-height: 1.8;
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "intro"
+        "flow"
+        "diagram";
+    }
+  }
+
+  @media (max-width: 520px) {
+    .flow-step {
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
+    }
+
+    .diagram-heading {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
   }
 </style>

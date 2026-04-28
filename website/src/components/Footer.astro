@@ -5,23 +5,25 @@
   <div class="footer-inner">
     <div class="footer-left">
       <span class="footer-brand">ShipNode</span>
-      <span class="footer-sep">·</span>
-      <span class="footer-text">Deploy Node.js apps with a single command</span>
+      <span class="footer-text">Built by <a href="https://devalade.me" target="_blank" rel="noopener">devalade</a></span>
     </div>
-    <div class="footer-right">
+    <nav class="footer-nav" aria-label="Footer">
       <a href="https://github.com/devalade/shipnode" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/devalade/shipnode/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
-    </div>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
   </div>
 </footer>
 
 <style>
   .footer {
     border-top: 1px solid var(--border-primary);
-    padding: var(--space-xl);
+    padding: var(--space-xl) clamp(1rem, 4vw, 2rem);
+    background: var(--bg-secondary);
   }
   .footer-inner {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     display: flex;
     align-items: center;
@@ -30,22 +32,38 @@
     gap: var(--space-md);
   }
   .footer-left {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
+    display: grid;
+    gap: 0.15rem;
     font-size: 0.8125rem;
   }
   .footer-brand { font-weight: 600; color: var(--text-primary); }
-  .footer-sep { color: var(--text-muted); }
   .footer-text { color: var(--text-tertiary); }
-  .footer-right {
+  .footer-text a {
+    color: var(--text-primary);
+    transition: color var(--transition-fast);
+  }
+  .footer-text a:hover { color: var(--accent-hover); }
+  .footer-nav {
     display: flex;
     gap: var(--space-lg);
   }
-  .footer-right a {
+  .footer-nav a {
     font-size: 0.8125rem;
     color: var(--text-tertiary);
-    transition: color var(--transition-fast);
+    transition: color var(--transition-fast), transform var(--transition-fast);
+    padding: 0.125rem 0;
   }
-  .footer-right a:hover { color: var(--text-primary); }
+  .footer-nav a:hover { color: var(--text-primary); }
+  .footer-nav a:active { transform: scale(0.97); }
+
+  @media (max-width: 620px) {
+    .footer-inner {
+      align-items: flex-start;
+    }
+
+    .footer-nav {
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+  }
 </style>

@@ -1,24 +1,24 @@
 ---
 ---
 
-<header class="header">
+<header class="header" id="header">
   <div class="header-inner">
-    <a href="/" class="logo" id="logo">
+    <a href="/" class="logo" id="logo" aria-label="ShipNode home">
       <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="32" height="32" rx="8" fill="#6366f1"/>
-        <path d="M8 22L16 10L24 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M12 18H20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+        <rect x="1" y="1" width="30" height="30" rx="7" fill="#ededdf"/>
+        <path d="M8 21L16 9L24 21" stroke="#171812" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M12 18H20" stroke="#d6a85d" stroke-width="2.35" stroke-linecap="round"/>
       </svg>
       <span>ShipNode</span>
     </a>
-    <nav class="nav" id="main-nav">
-      <a href="#how-it-works">How it works</a>
-      <a href="#features">Features</a>
-      <a href="#commands">Commands</a>
-      <a href="#frameworks">Frameworks</a>
+    <nav class="nav" id="main-nav" aria-label="Main">
+      <a href="#how-it-works" data-section="how-it-works">How it works</a>
+      <a href="#features" data-section="features">Features</a>
+      <a href="#commands" data-section="commands">Commands</a>
+      <a href="#frameworks" data-section="frameworks">Frameworks</a>
     </nav>
-    <a href="https://github.com/devalade/shipnode" target="_blank" rel="noopener" class="github-link" id="github-link">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    <a href="https://github.com/devalade/shipnode" target="_blank" rel="noopener" class="github-link" id="github-link" aria-label="View ShipNode on GitHub">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
       <span>GitHub</span>
     </a>
   </div>
@@ -30,15 +30,16 @@
     top: 0;
     left: 0;
     right: 0;
-    z-index: 100;
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    background: rgba(10, 10, 10, 0.8);
+    z-index: var(--z-header);
+    backdrop-filter: blur(18px) saturate(130%);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    background: rgba(16, 17, 15, 0.82);
     border-bottom: 1px solid var(--border-primary);
+    box-shadow: inset 0 1px 0 rgba(237, 237, 223, 0.05);
   }
 
   .header-inner {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 0 var(--space-xl);
     height: 64px;
@@ -52,45 +53,90 @@
     align-items: center;
     gap: var(--space-sm);
     font-weight: 700;
-    font-size: 1.125rem;
+    font-size: 1rem;
     color: var(--text-primary);
-    transition: opacity var(--transition-fast);
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    letter-spacing: -0.01em;
   }
   .logo:hover { opacity: 0.8; }
+  .logo:active { transform: scale(0.97); }
 
   .nav {
     display: flex;
-    gap: var(--space-lg);
+    gap: 0.35rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    background: rgba(237, 237, 223, 0.03);
   }
   .nav a {
-    font-size: 0.875rem;
+    position: relative;
+    font-size: 0.8125rem;
     color: var(--text-secondary);
-    transition: color var(--transition-fast);
+    transition: color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
     font-weight: 500;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-full);
   }
-  .nav a:hover { color: var(--text-primary); }
+  .nav a:hover { color: var(--text-primary); background: rgba(237, 237, 223, 0.05); }
+  .nav a.active {
+    color: var(--text-primary);
+    background: rgba(237, 237, 223, 0.08);
+  }
 
   .github-link {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--text-primary);
     padding: 0.5rem 1rem;
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-full);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
     transition: all var(--transition-fast);
     font-weight: 500;
   }
   .github-link:hover {
-    color: var(--text-primary);
-    border-color: var(--border-accent);
-    background: var(--bg-elevated);
+    border-color: var(--accent-primary);
+    background: var(--accent-muted);
+    transform: translateY(-1px);
+  }
+  .github-link:active {
+    transform: scale(0.97) translateY(0);
   }
 
   @media (max-width: 768px) {
     .nav { display: none; }
     .github-link span { display: none; }
-    .github-link { padding: 0.5rem; }
+    .github-link { padding: 0.5rem; border-radius: var(--radius-md); }
+  }
+
+  @media (max-width: 420px) {
+    .header-inner { padding: 0 var(--space-md); }
   }
 </style>
+
+<script>
+  // Active section highlighting on scroll
+  const sections = ["how-it-works", "features", "commands", "frameworks"];
+  const navLinks = document.querySelectorAll<HTMLAnchorElement>("#main-nav a[data-section]");
+
+  function updateActive() {
+    let current = "";
+    for (const id of sections) {
+      const el = document.getElementById(id);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        if (rect.top <= 120) {
+          current = id;
+        }
+      }
+    }
+    navLinks.forEach((link) => {
+      link.classList.toggle("active", link.dataset.section === current);
+    });
+  }
+
+  window.addEventListener("scroll", updateActive, { passive: true });
+  updateActive();
+</script>

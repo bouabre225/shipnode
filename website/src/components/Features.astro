@@ -1,131 +1,124 @@
 ---
 const features = [
-  {
-    icon: "⚡",
-    title: "Zero-Downtime Deploys",
-    desc: "Atomic symlink switching with timestamped releases. Your users never see downtime.",
-  },
-  {
-    icon: "🔒",
-    title: "Automatic HTTPS",
-    desc: "Caddy handles Let's Encrypt certificates. Just set your domain and you're done.",
-  },
-  {
-    icon: "♻️",
-    title: "Instant Rollbacks",
-    desc: "Health checks fail? Auto-rollback. Need to revert? One command.",
-  },
-  {
-    icon: "🔍",
-    title: "Health Checks",
-    desc: "Automated endpoint validation after every deploy with configurable retries.",
-  },
-  {
-    icon: "🛡️",
-    title: "Server Hardening",
-    desc: "Interactive wizard to harden SSH, configure firewall, and set up fail2ban.",
-  },
-  {
-    icon: "📦",
-    title: "Framework Detection",
-    desc: "Auto-detects Express, NestJS, Next.js, AdonisJS, React, Vue, and 10+ more.",
-  },
-  {
-    icon: "⚙️",
-    title: "Ejectable Templates",
-    desc: "Customize PM2 and Caddy configs. Eject, edit, and they persist across deploys.",
-  },
-  {
-    icon: "🚀",
-    title: "CI/CD Ready",
-    desc: "Generate GitHub Actions workflows and sync secrets with one command.",
-  },
+  ["Zero-downtime releases", "Timestamped directories and atomic symlink switching keep active traffic on the previous build until the new one is verified."],
+  ["Health-gated deploys", "Configurable endpoint checks decide whether the release survives or rolls back automatically."],
+  ["PM2 and Caddy templates", "Generated configs can be ejected, edited, and kept across future deploys."],
+  ["Server hardening", "SSH, firewall, fail2ban, app users, and sudo policies can be managed from the same CLI surface."],
+  ["Profiles and CI", "Deploy production, staging, or a custom config, then generate GitHub Actions workflows when you are ready."],
+  ["PostgreSQL setup", "Optional database provisioning creates the role, database, and credentials on the target server."],
 ];
 ---
 
-<section class="features" id="features">
-  <div class="container">
-    <span class="section-label">Features</span>
-    <h2>Everything you need.<br />Nothing you don't.</h2>
-    <p class="section-desc">Pure bash. No runtime dependencies. Works on any Ubuntu/Debian server with SSH access.</p>
+<section class="shell-section features" id="features">
+  <div class="shell-container">
+    <div class="feature-head">
+      <div>
+        <p class="section-kicker">Library surface</p>
+        <h2 class="section-title">A deploy tool made of readable shell modules.</h2>
+      </div>
+      <p class="section-copy">
+        The CLI is split into focused modules for validation, prompts, package managers, templates,
+        database setup, users, releases, and commands. That keeps the tool small enough to inspect.
+      </p>
+    </div>
+
     <div class="feature-grid">
-      {features.map((f) => (
-        <div class="feature-card">
-          <span class="feature-icon">{f.icon}</span>
-          <h3>{f.title}</h3>
-          <p>{f.desc}</p>
-        </div>
+      {features.map(([title, copy], index) => (
+        <article class={`feature feature-${index + 1}`}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <h3>{title}</h3>
+          <p>{copy}</p>
+        </article>
       ))}
     </div>
   </div>
 </section>
 
 <style>
-  .features {
-    padding: var(--space-4xl) var(--space-xl);
-    border-top: 1px solid var(--border-primary);
-  }
-  .container { max-width: 1000px; margin: 0 auto; }
-  .section-label {
-    display: inline-block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--accent-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: var(--space-md);
-  }
-  h2 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-md);
-  }
-  .section-desc {
-    color: var(--text-secondary);
-    font-size: 1.0625rem;
-    max-width: 480px;
-    line-height: 1.7;
-    margin-bottom: var(--space-3xl);
-  }
-  .feature-grid {
+  .feature-head {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-md);
-  }
-  .feature-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xl);
-    transition: border-color var(--transition-base), box-shadow var(--transition-base), transform var(--transition-base);
-  }
-  .feature-card:hover {
-    border-color: var(--border-accent);
-    box-shadow: var(--shadow-glow);
-    transform: translateY(-2px);
-  }
-  .feature-icon {
-    font-size: 1.5rem;
-    display: block;
-    margin-bottom: var(--space-md);
-  }
-  .feature-card h3 {
-    font-size: 0.9375rem;
-    font-weight: 600;
-    margin-bottom: var(--space-xs);
-  }
-  .feature-card p {
-    font-size: 0.8125rem;
-    color: var(--text-secondary);
-    line-height: 1.6;
+    grid-template-columns: minmax(0, 0.95fr) minmax(300px, 0.65fr);
+    gap: clamp(2rem, 6vw, 7rem);
+    align-items: end;
+    margin-bottom: clamp(2rem, 5vw, 4.5rem);
   }
 
-  @media (max-width: 900px) {
-    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .section-title {
+    margin-top: 1rem;
+    max-width: 760px;
   }
-  @media (max-width: 500px) {
-    .feature-grid { grid-template-columns: 1fr; }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 0.75fr 1fr;
+    gap: 1px;
+    background: var(--border-primary);
+    border: 1px solid var(--border-primary);
+  }
+
+  .feature {
+    min-height: 240px;
+    padding: clamp(1.25rem, 2.8vw, 2rem);
+    background: var(--bg-primary);
+    transition: background var(--transition-base), transform var(--transition-fast);
+  }
+
+  .feature:hover {
+    background: var(--bg-secondary);
+  }
+
+  .feature:active {
+    transform: scale(0.995);
+  }
+
+  .feature-1 {
+    grid-row: span 2;
+  }
+
+  .feature-4 {
+    grid-column: span 2;
+  }
+
+  .feature span {
+    display: inline-block;
+    color: var(--accent-hover);
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    margin-bottom: 3rem;
+  }
+
+  .feature h3 {
+    font-size: clamp(1.15rem, 2vw, 1.65rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  .feature p {
+    margin-top: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.94rem;
+    line-height: 1.65;
+    text-wrap: pretty;
+  }
+
+  @media (max-width: 980px) {
+    .feature-head,
+    .feature-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .feature-1,
+    .feature-4 {
+      grid-row: auto;
+      grid-column: auto;
+    }
+
+    .feature {
+      min-height: 0;
+    }
+
+    .feature span {
+      margin-bottom: 1.5rem;
+    }
   }
 </style>

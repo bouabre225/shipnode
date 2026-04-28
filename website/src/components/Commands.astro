@@ -1,136 +1,156 @@
 ---
 const groups = [
   {
-    label: "Setup",
+    label: "Bootstrap",
     commands: [
-      { cmd: "shipnode init", desc: "Interactive config wizard" },
-      { cmd: "shipnode setup", desc: "Install Node.js, PM2, Caddy on server" },
+      ["shipnode init", "Create shipnode.conf with framework-aware defaults"],
+      ["shipnode setup", "Install Node.js, PM2, Caddy, jq, and package managers"],
+      ["shipnode users-yaml", "Generate a team access manifest"],
     ],
   },
   {
-    label: "Deploy",
+    label: "Ship",
     commands: [
-      { cmd: "shipnode deploy", desc: "Deploy your app" },
-      { cmd: "shipnode deploy --dry-run", desc: "Preview without deploying" },
-      { cmd: "shipnode rollback", desc: "Rollback to previous release" },
+      ["shipnode deploy", "Build, sync, release, health-check"],
+      ["shipnode deploy --profile staging", "Use shipnode.staging.conf"],
+      ["shipnode rollback 2", "Move current back two releases"],
+      ["shipnode unlock", "Clear a stale deploy lock"],
     ],
   },
   {
-    label: "Monitor",
+    label: "Operate",
     commands: [
-      { cmd: "shipnode status", desc: "Rich status dashboard" },
-      { cmd: "shipnode logs", desc: "Stream live PM2 logs" },
-      { cmd: "shipnode metrics", desc: "Real-time CPU/memory" },
+      ["shipnode status", "Inspect PM2 and release state"],
+      ["shipnode logs", "Stream process logs"],
+      ["shipnode metrics", "Watch CPU and memory"],
+      ["shipnode doctor", "Run pre-flight diagnostics"],
     ],
   },
   {
-    label: "Manage",
+    label: "Customize",
     commands: [
-      { cmd: "shipnode eject", desc: "Eject PM2 + Caddy templates" },
-      { cmd: "shipnode harden", desc: "Server security hardening" },
-      { cmd: "shipnode doctor", desc: "Pre-flight diagnostics" },
-      { cmd: "shipnode ci github", desc: "Generate CI/CD workflow" },
+      ["shipnode eject", "Persist PM2 and Caddy templates"],
+      ["shipnode env", "Upload shared environment variables"],
+      ["shipnode ci github", "Generate a GitHub Actions workflow"],
+      ["shipnode harden", "Apply SSH, firewall, and fail2ban guidance"],
     ],
   },
 ];
 ---
 
-<section class="commands" id="commands">
-  <div class="container">
-    <span class="section-label">Commands</span>
-    <h2>One tool, many powers.</h2>
-    <p class="section-desc">Every command you need to deploy, monitor, and manage your Node.js apps.</p>
+<section class="shell-section commands" id="commands">
+  <div class="shell-container command-layout">
+    <div class="sticky-copy">
+      <p class="section-kicker">Command map</p>
+      <h2 class="section-title">Small verbs, practical control.</h2>
+      <p class="section-copy">
+        ShipNode does not hide the server. It gives you memorable commands for the tasks
+        that normally scatter across SSH sessions, copied snippets, and half-finished notes.
+      </p>
+    </div>
 
-    <div class="cmd-grid">
-      {groups.map((g) => (
-        <div class="cmd-group">
-          <h3 class="cmd-group-label">{g.label}</h3>
-          <div class="cmd-list">
-            {g.commands.map((c) => (
-              <div class="cmd-item">
-                <code class="cmd-name">{c.cmd}</code>
-                <span class="cmd-desc">{c.desc}</span>
+    <div class="command-table">
+      {groups.map((group) => (
+        <section class="command-group" aria-labelledby={`${group.label.toLowerCase()}-commands`}>
+          <h3 id={`${group.label.toLowerCase()}-commands`}>{group.label}</h3>
+          <div>
+            {group.commands.map(([cmd, desc]) => (
+              <div class="command-row">
+                <code>{cmd}</code>
+                <span>{desc}</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   </div>
 </section>
 
 <style>
-  .commands {
-    padding: var(--space-4xl) var(--space-xl);
-    border-top: 1px solid var(--border-primary);
-  }
-  .container { max-width: 1000px; margin: 0 auto; }
-  .section-label {
-    display: inline-block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--accent-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: var(--space-md);
-  }
-  h2 {
-    font-size: clamp(2rem, 4vw, 2.75rem);
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    margin-bottom: var(--space-md);
-  }
-  .section-desc {
-    color: var(--text-secondary);
-    font-size: 1.0625rem;
-    max-width: 480px;
-    line-height: 1.7;
-    margin-bottom: var(--space-3xl);
-  }
-  .cmd-grid {
+  .command-layout {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--space-lg);
-  }
-  .cmd-group {
-    background: var(--bg-card);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xl);
-    transition: border-color var(--transition-base);
-  }
-  .cmd-group:hover { border-color: var(--border-accent); }
-  .cmd-group-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-tertiary);
-    margin-bottom: var(--space-md);
-  }
-  .cmd-list { display: flex; flex-direction: column; gap: var(--space-sm); }
-  .cmd-item {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-md);
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--border-subtle);
-  }
-  .cmd-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .cmd-name {
-    font-family: var(--font-mono);
-    font-size: 0.8125rem;
-    color: var(--accent-hover);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  .cmd-desc {
-    font-size: 0.8125rem;
-    color: var(--text-secondary);
+    grid-template-columns: minmax(280px, 0.42fr) minmax(0, 1fr);
+    gap: clamp(2rem, 6vw, 6rem);
+    align-items: start;
   }
 
-  @media (max-width: 700px) {
-    .cmd-grid { grid-template-columns: 1fr; }
+  .sticky-copy {
+    position: sticky;
+    top: 6rem;
+  }
+
+  .section-title {
+    margin-top: 1rem;
+  }
+
+  .section-copy {
+    margin-top: 1.25rem;
+  }
+
+  .command-table {
+    border-top: 1px solid var(--border-primary);
+  }
+
+  .command-group {
+    display: grid;
+    grid-template-columns: 10rem minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 1.4rem 0;
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  h3 {
+    color: var(--accent-hover);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .command-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1fr);
+    gap: 1rem;
+    padding: 0.72rem 0;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .command-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .command-row code {
+    color: var(--text-primary);
+    font-size: 0.82rem;
+    min-width: 0;
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: thin;
+  }
+
+  .command-row span {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  @media (max-width: 920px) {
+    .command-layout,
+    .command-group,
+    .command-row {
+      grid-template-columns: 1fr;
+    }
+
+    .sticky-copy {
+      position: static;
+    }
+
+    .command-group,
+    .command-row {
+      gap: 0.65rem;
+    }
   }
 </style>
