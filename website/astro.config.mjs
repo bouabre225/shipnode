@@ -1,12 +1,10 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 
+const isGitHubPages = process.env.GITHUB_ACTIONS === 'true';
+
 // https://astro.build/config
 export default defineConfig({
-  // For custom domain (e.g. shipnode.dev)
-  site: 'https://shipnode.dev',
-
-  // For GitHub Pages without custom domain, use:
-  // site: 'https://devalade.github.io',
-  // base: '/shipnode',
+  site: isGitHubPages ? 'https://devalade.github.io' : 'https://shipnode.dev',
+  base: isGitHubPages ? '/shipnode' : '/',
 });

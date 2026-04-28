@@ -1,9 +1,10 @@
 ---
+const basePath = import.meta.env.BASE_URL;
 ---
 
 <header class="header" id="header">
   <div class="header-inner">
-    <a href="/" class="logo" id="logo" aria-label="ShipNode home">
+    <a href={basePath} class="logo" id="logo" aria-label="ShipNode home">
       <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="1" y="1" width="30" height="30" rx="7" fill="#ededdf"/>
         <path d="M8 21L16 9L24 21" stroke="#171812" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"/>
