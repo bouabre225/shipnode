@@ -53,7 +53,7 @@ ShipNode includes a shareable AI agent skill that helps users plan deployments, 
 Install it with the [`skills` CLI](https://skills.sh/docs):
 
 ```bash
-npx skills add https://github.com/devalade/shipnode --skill shipnode --global
+npx skills add devalade/shipnode
 ```
 
 After installing, ask your agent to use `$shipnode` when you want help deploying a Node.js app with ShipNode.
