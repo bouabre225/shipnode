@@ -1,0 +1,4 @@
+interface:
+  display_name: "ShipNode"
+  short_description: "Deploy Node.js apps with ShipNode"
+  default_prompt: "Use $shipnode to help me deploy my Node.js app with ShipNode."

@@ -46,6 +46,18 @@ cd shipnode
 
 See [Installation](docs/getting-started/installation.md) for details. Uninstall: `rm -rf ~/.shipnode`
 
+### Optional: Install the AI Deployment Skill
+
+ShipNode includes a shareable AI agent skill that helps users plan deployments, write `shipnode.conf`, troubleshoot failed deploys, manage `.env`, roll back releases, and set up CI/CD.
+
+Install it with the [`skills` CLI](https://skills.sh/docs):
+
+```bash
+npx skills add https://github.com/devalade/shipnode --skill shipnode --global
+```
+
+After installing, ask your agent to use `$shipnode` when you want help deploying a Node.js app with ShipNode.
+
 ### 2. Init
 
 ```bash
