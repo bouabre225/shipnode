@@ -44,10 +44,7 @@ prompt_yes_no() {
 # Generate password hash (reuses cmd_mkpasswd logic)
 generate_password_hash() {
     local password=$1
-    # Check if mkpasswd is available
-    if ! command -v mkpasswd &> /dev/null; then
-        error "mkpasswd not found. Install it with: sudo apt-get install whois"
-    fi
+    ensure_mkpasswd
     mkpasswd -m sha-512 "$password"
 }
 

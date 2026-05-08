@@ -1,8 +1,81 @@
-cmd_mkpasswd() {
-    # Check if mkpasswd is available
-    if ! command -v mkpasswd &> /dev/null; then
-        error "mkpasswd not found. Install it with: sudo apt-get install whois"
+install_mkpasswd() {
+    if command -v mkpasswd &> /dev/null; then
+        return 0
     fi
+
+    info "mkpasswd not found. Installing password hash helper..."
+
+    local os_info pkg_manager
+    IFS='|' read -r os_info pkg_manager <<< "$(detect_os)"
+
+    if [ -z "$pkg_manager" ]; then
+        warn "Could not detect package manager."
+        return 1
+    fi
+
+    local sudo_cmd="sudo"
+    if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+        sudo_cmd=""
+    elif ! command -v sudo &> /dev/null && [ "$pkg_manager" != "brew" ]; then
+        warn "sudo is required to install mkpasswd with $pkg_manager."
+        return 1
+    fi
+
+    local install_success=false
+    local log_file="/tmp/shipnode_mkpasswd_install_$$.log"
+
+    case "$pkg_manager" in
+        apt)
+            info "Using apt to install whois..."
+            $sudo_cmd apt update &> "$log_file" && \
+                $sudo_cmd apt install -y whois >> "$log_file" 2>&1 && install_success=true
+            ;;
+        dnf|yum)
+            info "Using $pkg_manager to install whois..."
+            $sudo_cmd "$pkg_manager" install -y whois &> "$log_file" && install_success=true
+            ;;
+        apk)
+            info "Using apk to install whois..."
+            $sudo_cmd apk add --no-cache whois &> "$log_file" && install_success=true
+            ;;
+        pacman)
+            info "Using pacman to install whois..."
+            $sudo_cmd pacman -S --needed --noconfirm whois &> "$log_file" && install_success=true
+            ;;
+        brew)
+            info "Using Homebrew to install whois..."
+            brew install whois &> "$log_file" && install_success=true
+            ;;
+        *)
+            warn "Unsupported package manager: $pkg_manager"
+            return 1
+            ;;
+    esac
+
+    if [ "$install_success" = true ] && command -v mkpasswd &> /dev/null; then
+        success "mkpasswd installed successfully"
+        rm -f "$log_file"
+        return 0
+    fi
+
+    warn "Failed to install mkpasswd."
+    if [ -f "$log_file" ]; then
+        warn "Installation log available at: $log_file"
+    fi
+    warn "Install it manually with your package manager (Debian/Ubuntu package: whois)."
+    return 1
+}
+
+ensure_mkpasswd() {
+    if command -v mkpasswd &> /dev/null; then
+        return 0
+    fi
+
+    install_mkpasswd || error "mkpasswd not found. Install it manually with your package manager (Debian/Ubuntu: sudo apt-get install whois)"
+}
+
+cmd_mkpasswd() {
+    ensure_mkpasswd
 
     info "Generate password hash for users.yml"
     echo ""
@@ -33,4 +106,3 @@ cmd_mkpasswd() {
     echo "  password: \"$hash\""
     echo ""
 }
-
