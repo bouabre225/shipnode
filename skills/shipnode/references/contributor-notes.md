@@ -10,7 +10,7 @@ Core modules:
 
 - `lib/core.sh`: globals, logging, OS detection, Gum install, template rendering.
 - `lib/release.sh`: release management, locks, health checks, rollback helpers.
-- `lib/database.sh`: PostgreSQL setup.
+- `lib/database.sh`: PostgreSQL, MySQL, SQLite, and Redis setup.
 - `lib/users.sh`: user provisioning.
 - `lib/framework.sh`: framework detection.
 - `lib/validation.sh`: input validation.

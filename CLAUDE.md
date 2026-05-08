@@ -1,6 +1,6 @@
 # ShipNode - Claude Context
 
-Zero-downtime deployment tool for Node.js applications. Modular bash CLI for deploying backend/frontend apps with PM2, Caddy, PostgreSQL support.
+Zero-downtime deployment tool for Node.js applications. Modular bash CLI for deploying backend/frontend apps with PM2, Caddy, database, and Redis support.
 
 ## Quick Commands
 
@@ -43,7 +43,7 @@ shipnode (main entry)
 ### Core Modules (lib/)
 - **core.sh**: Globals, colors, logging (error/success/info/warn), OS detection, Gum install
 - **release.sh**: Zero-downtime deploy (timestamps, symlinks, health checks, rollback)
-- **database.sh**: PostgreSQL setup
+- **database.sh**: PostgreSQL, MySQL, SQLite, and Redis setup
 - **users.sh**: User provisioning (creation, SSH keys, permissions, sudo, revocation)
 - **framework.sh**: Framework detection from package.json (Express, NestJS, Next.js, React, etc.)
 - **validation.sh**: Input validation (IP, port, domain, SSH, remote port checks)
@@ -169,9 +169,12 @@ Sourced as bash, key variables:
 - `HEALTH_CHECK_TIMEOUT`: Seconds (default 30)
 - `HEALTH_CHECK_RETRIES`: Retries before rollback (default 3)
 
-### Database
+### Database and Redis
 - `DB_SETUP_ENABLED`: true/false
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD`: PostgreSQL config
+- `DB_TYPE`: postgresql/mysql/sqlite
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD`: PostgreSQL/MySQL config
+- `DB_SQLITE_PATH`: SQLite file path
+- `REDIS_SETUP_ENABLED`: true/false
 
 ## Package Manager Detection & Installation
 

@@ -568,6 +568,7 @@ deploy_frontend_legacy() {
     # Rsync build directory
     info "Syncing $BUILD_DIR to server..."
     remote_rsync -avz --progress --delete \
+        --exclude shared/ --exclude .shipnode/ --exclude releases/ --exclude current \
         "$BUILD_DIR/" "$SSH_USER@$SSH_HOST:$REMOTE_PATH/"
 
     success "Frontend deployed"

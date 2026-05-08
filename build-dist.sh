@@ -225,8 +225,8 @@ exit 0
 __ARCHIVE_BELOW__
 EOF
 
-# Append base64-encoded archive to installer
-base64 "$DIST_DIR/$ARCHIVE_NAME" >> "$DIST_DIR/$INSTALLER_NAME"
+# Append base64-encoded archive. Stdin works on both GNU and BSD base64.
+base64 < "$DIST_DIR/$ARCHIVE_NAME" >> "$DIST_DIR/$INSTALLER_NAME"
 
 # Make installer executable
 chmod +x "$DIST_DIR/$INSTALLER_NAME"

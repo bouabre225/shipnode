@@ -20,7 +20,39 @@ shipnode deploy
 shipnode status
 ```
 
-`shipnode setup` installs Node.js, PM2, and Caddy on the server. Run it once per server or after significant server changes.
+`shipnode setup` installs Node.js, PM2, and Caddy on the server. If database or Redis setup is enabled in `shipnode.conf`, it also provisions those services. Run setup once per server or after significant server changes.
+
+## Database and Redis Setup
+
+Enable remote database setup in `shipnode.conf`:
+
+```bash
+DB_SETUP_ENABLED=true
+DB_TYPE=postgresql
+DB_NAME=myapp_db
+DB_USER=myapp_user
+DB_PASSWORD=${DB_PASSWORD:-}
+```
+
+Supported `DB_TYPE` values:
+
+- `postgresql`: install/start PostgreSQL, configure localhost TCP, create database/user, grant privileges.
+- `mysql`: install/start MySQL, create database/user on `localhost`, grant privileges.
+- `sqlite`: install `sqlite3`, create file at `DB_SQLITE_PATH` or `$REMOTE_PATH/shared/database.sqlite`.
+
+Enable Redis independently:
+
+```bash
+REDIS_SETUP_ENABLED=true
+```
+
+Then run:
+
+```bash
+shipnode setup
+```
+
+Schema migrations are handled separately via `.shipnode/pre-deploy.sh`.
 
 ## Backend/API Deployments
 

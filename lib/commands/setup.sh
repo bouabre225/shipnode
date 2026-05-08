@@ -98,8 +98,8 @@ ENDSSH
         info "No package.json found, skipping package manager setup"
     fi
 
-    # Setup PostgreSQL if enabled
-    setup_postgresql
+    # Setup databases/caches if enabled
+    setup_databases
 
     success "Server setup complete"
     info "Ready to deploy with: shipnode deploy"

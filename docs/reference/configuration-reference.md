@@ -87,6 +87,48 @@ DOMAIN=myapp.com
 | `PRE_DEPLOY_SCRIPT` | string | Path to pre-deploy hook |
 | `POST_DEPLOY_SCRIPT` | string | Path to post-deploy hook |
 
+### Database and Redis Setup
+
+When `DB_SETUP_ENABLED=true`, `shipnode setup` provisions the selected database on the remote server. `DB_TYPE` supports `postgresql`, `mysql`, and `sqlite`. PostgreSQL/MySQL setup creates the configured database and user. SQLite setup installs `sqlite3` and creates the database file. Redis is independent and enabled with `REDIS_SETUP_ENABLED=true`.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DB_SETUP_ENABLED` | boolean | `false` | Enable database setup during `shipnode setup` |
+| `DB_TYPE` | string | `postgresql` | `postgresql`, `mysql`, or `sqlite` |
+| `DB_NAME` | string | - | PostgreSQL/MySQL database to create |
+| `DB_USER` | string | - | PostgreSQL/MySQL database user to create |
+| `DB_PASSWORD` | string | - | PostgreSQL/MySQL password for `DB_USER` |
+| `DB_SQLITE_PATH` | string | `$REMOTE_PATH/shared/database.sqlite` | SQLite database path |
+| `REDIS_SETUP_ENABLED` | boolean | `false` | Enable Redis setup during `shipnode setup` |
+
+PostgreSQL/MySQL example:
+
+```bash
+DB_SETUP_ENABLED=true
+DB_TYPE=postgresql
+DB_NAME=myapp_db
+DB_USER=myapp_user
+DB_PASSWORD=${DB_PASSWORD:-}
+```
+
+SQLite example:
+
+```bash
+DB_SETUP_ENABLED=true
+DB_TYPE=sqlite
+DB_SQLITE_PATH=/var/www/myapp/shared/database.sqlite
+```
+
+Redis example:
+
+```bash
+REDIS_SETUP_ENABLED=true
+```
+
+Run schema migrations from `.shipnode/pre-deploy.sh`; database creation and migrations are separate steps.
+
+Keep SQLite files under `shared/` so they survive release switches and cleanup. ShipNode rejects paths inside `$REMOTE_PATH/current/` or `$REMOTE_PATH/releases/`.
+
 ### Advanced
 
 | Variable | Type | Description |

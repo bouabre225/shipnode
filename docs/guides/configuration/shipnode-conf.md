@@ -87,6 +87,34 @@ DOMAIN=myapp.com
 | `PRE_DEPLOY_SCRIPT` | Path to pre-deploy hook |
 | `POST_DEPLOY_SCRIPT` | Path to post-deploy hook |
 
+### Database and Redis Setup
+
+Enable this when the remote server should host a database for the app:
+
+```bash
+DB_SETUP_ENABLED=true
+DB_TYPE=postgresql
+DB_NAME=myapp_db
+DB_USER=myapp_user
+DB_PASSWORD=${DB_PASSWORD:-}
+```
+
+`DB_TYPE` can be `postgresql`, `mysql`, or `sqlite`. PostgreSQL/MySQL setup installs the server if missing, starts/enables it, creates the database/user, and grants privileges. SQLite setup installs `sqlite3` and creates a database file at `DB_SQLITE_PATH`, defaulting to `$REMOTE_PATH/shared/database.sqlite`. Keep SQLite files under `shared/`; ShipNode rejects paths inside `current/` or `releases/`.
+
+Enable Redis separately:
+
+```bash
+REDIS_SETUP_ENABLED=true
+```
+
+`shipnode setup` installs Redis, binds it to localhost, enables protected mode, and starts/enables the service.
+
+Use `.shipnode/pre-deploy.sh` for migrations:
+
+```bash
+npx prisma migrate deploy
+```
+
 ### Customization
 
 ```bash

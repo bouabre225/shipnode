@@ -106,19 +106,24 @@ HEALTH_CHECK_RETRIES=3
 # POST_DEPLOY_SCRIPT=.shipnode/post-deploy.sh
 
 # ============================================
-# PostgreSQL Database Setup
+# Database and Redis Setup
 # ============================================
-# Enable PostgreSQL installation and setup
-DB_SETUP_ENABLED=true
+# Enable database installation and setup
+DB_SETUP_ENABLED=false
 
-# Database name to create
+# Database type: postgresql, mysql, or sqlite
+DB_TYPE=postgresql
+
+# Database name/user/password for PostgreSQL or MySQL
 DB_NAME=myapp_db
-
-# Database user to create
 DB_USER=myapp_user
-
-# Database password for the user
 # You can reference .env variables directly:
 #   DB_PASSWORD=$DB_PASSWORD
 # Or use defaults: DB_PASSWORD=${DB_PASSWORD:-fallback_value}
 DB_PASSWORD=${DB_PASSWORD:-}
+
+# SQLite database path. Defaults to $REMOTE_PATH/shared/database.sqlite
+# DB_SQLITE_PATH=/var/www/myapp/shared/database.sqlite
+
+# Enable Redis installation and localhost setup
+REDIS_SETUP_ENABLED=false

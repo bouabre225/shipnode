@@ -25,6 +25,7 @@ shipnode deploy  ───rsync──▶   /var/www/myapp/
 - **Node.js** - LTS version via NodeSource
 - **PM2** - Process manager (auto-restart, crash recovery)
 - **Caddy** - Web server with automatic HTTPS (Let's Encrypt)
+- **Databases** - optional PostgreSQL, MySQL, SQLite, and Redis setup when enabled
 
 ---
 
@@ -606,6 +607,15 @@ HEALTH_CHECK_RETRIES=3       # Attempts before rollback (default: 3)
 # === Hooks ===
 # PRE_DEPLOY_SCRIPT=.shipnode/pre-deploy.sh
 # POST_DEPLOY_SCRIPT=.shipnode/post-deploy.sh
+
+# === Database and Redis setup ===
+DB_SETUP_ENABLED=false       # Set true to install/configure DB during setup
+DB_TYPE=postgresql           # postgresql, mysql, or sqlite
+DB_NAME=myapp_db             # PostgreSQL/MySQL database to create
+DB_USER=myapp_user           # PostgreSQL/MySQL user to create
+DB_PASSWORD=${DB_PASSWORD:-} # PostgreSQL/MySQL password from env or .env
+DB_SQLITE_PATH=              # Optional; defaults to $REMOTE_PATH/shared/database.sqlite
+REDIS_SETUP_ENABLED=false    # Set true to install/configure Redis on localhost
 ```
 
 ### Supported Frameworks

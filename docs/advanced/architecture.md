@@ -17,7 +17,7 @@ shipnode/
 │   ├── core.sh                # Core utilities, globals, template rendering (247 lines)
 │   ├── pkg-manager.sh         # Package manager detection + PM2 template generation (236 lines)
 │   ├── release.sh             # Release management with metadata tracking (263 lines)
-│   ├── database.sh            # Database operations (96 lines)
+│   ├── database.sh            # Database and Redis operations
 │   ├── users.sh               # User provisioning helpers (352 lines)
 │   ├── framework.sh           # Framework detection (259 lines)
 │   ├── validation.sh          # Input validation (287 lines)
@@ -129,13 +129,16 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `cleanup_old_releases()` - Remove old releases
 - `rollback_to_release()` - Rollback to specific release
 
-#### database.sh (96 lines)
+#### database.sh
 
 **Purpose:** Database setup and management operations
 
 **Key Functions:**
-- `setup_database()` - Install and configure database
-- `run_migrations()` - Execute database migrations
+- `setup_databases()` - Dispatch configured database and Redis setup
+- `setup_postgresql()` - Install and configure PostgreSQL
+- `setup_mysql()` - Install and configure MySQL
+- `setup_sqlite()` - Install SQLite and create database file
+- `setup_redis()` - Install and configure Redis
 
 #### users.sh (352 lines)
 

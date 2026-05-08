@@ -260,4 +260,4 @@ ENDSSH
     fi
 }
 
-# Setup PostgreSQL database
+# Database setup lives in lib/database.sh

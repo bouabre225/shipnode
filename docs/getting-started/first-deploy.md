@@ -149,7 +149,7 @@ ShipNode switches back to the previous release instantly.
 
 ## Next Steps
 
-- [Add a Database](../guides/configuration/shipnode-conf.md) - Connect PostgreSQL
+- [Add a Database](../guides/configuration/shipnode-conf.md) - Configure PostgreSQL, MySQL, SQLite, or Redis
 - [Custom Templates](../guides/configuration/custom-templates.md) - Customize PM2/Caddy
 - [Health Checks](../guides/health-checks.md) - Configure health endpoints
 - [CI/CD](../guides/ci-cd.md) - Automate deployments with GitHub Actions
