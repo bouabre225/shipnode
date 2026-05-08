@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-VERSION="1.3.4"
+VERSION="1.3.5"
 DIST_DIR="dist"
 ARCHIVE_NAME="shipnode-payload.tar.gz"
 INSTALLER_NAME="shipnode-installer.sh"
@@ -90,7 +90,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-VERSION="1.3.4"
+VERSION="1.3.5"
 INSTALL_DIR="$HOME/.shipnode"
 
 # Parse flags
@@ -246,5 +246,7 @@ echo "Usage:"
 echo -e "  ${BLUE}bash $DIST_DIR/$INSTALLER_NAME${NC}"
 echo
 echo "Or upload to GitHub releases for users to download:"
-echo -e "  ${BLUE}curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash${NC}"
+echo -e "  ${BLUE}curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh${NC}"
+echo -e "  ${BLUE}chmod +x shipnode-installer.sh${NC}"
+echo -e "  ${BLUE}./shipnode-installer.sh${NC}"
 echo

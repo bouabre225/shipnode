@@ -34,7 +34,9 @@ shipnode deploy  ───rsync──▶   /var/www/myapp/
 ### 1. Install
 
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh
+chmod +x shipnode-installer.sh
+./shipnode-installer.sh
 ```
 
 Or clone and run directly:

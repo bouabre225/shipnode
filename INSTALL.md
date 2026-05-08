@@ -14,7 +14,9 @@ ShipNode offers two installation workflows:
 Download and run the self-extracting installer:
 
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh
+chmod +x shipnode-installer.sh
+./shipnode-installer.sh
 ```
 
 Or download manually:
@@ -216,7 +218,9 @@ cd /path/to/shipnode
 To update to the latest version, simply download and run the installer again:
 
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh
+chmod +x shipnode-installer.sh
+./shipnode-installer.sh
 ```
 
 ### For Developers (Cloned from Source)

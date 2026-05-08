@@ -7,7 +7,9 @@ This document explains the distribution system for ShipNode, allowing users to i
 The distribution system packages ShipNode into a single self-extracting installer that users can download and run. This makes installation as simple as:
 
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh
+chmod +x shipnode-installer.sh
+./shipnode-installer.sh
 ```
 
 ## How It Works
@@ -94,7 +96,9 @@ Creates `dist/shipnode-installer.sh` (~21KB)
 
 Users install with:
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh
+chmod +x shipnode-installer.sh
+./shipnode-installer.sh
 ```
 
 ### 2. Direct Download
