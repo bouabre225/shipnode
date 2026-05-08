@@ -57,8 +57,7 @@ release:
 	echo "Version: $$VERSION"; \
 	\
 	echo "Syncing version to build-dist.sh..."; \
-	sed -i "s/^VERSION=.*/VERSION=\"$$VERSION\"/" build-dist.sh; \
-	sed -i "s/^VERSION=.*/VERSION=\"$$VERSION\"/" build-dist.sh; \
+	perl -0pi -e "s/VERSION=\"[^\"]+\"/VERSION=\"$$VERSION\"/g" build-dist.sh; \
 	\
 	echo "Building distribution..."; \
 	./build-dist.sh; \
