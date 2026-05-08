@@ -175,4 +175,19 @@ show_gum_tip() {
     fi
 }
 
+ensure_gum_for_ui() {
+    if [ "$USE_GUM" = true ] || [ ! -t 0 ]; then
+        return 0
+    fi
+
+    info "Gum not found. Installing it for the enhanced interactive interface..."
+    if install_gum; then
+        USE_GUM=true
+        return 0
+    fi
+
+    warn "Continuing with classic prompts because Gum could not be installed."
+    return 0
+}
+
 # INITIALIZATION COMMANDS

@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # ShipNode version
-VERSION="1.3.1"
+VERSION="1.3.2"
 
 # SSH multiplexing for connection reuse
 SSH_CONTROL_PATH="/tmp/shipnode-ssh-%r@%h:%p"
@@ -137,16 +137,26 @@ install_gum() {
     
     local install_success=false
     local log_file="/tmp/shipnode_gum_install_$$.log"
+    local sudo_cmd="sudo"
+    if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+        sudo_cmd=""
+    elif ! command -v sudo &> /dev/null; then
+        warn "sudo is required to install Gum with $pkg_manager."
+        warn "Install Gum manually from: https://github.com/charmbracelet/gum"
+        return 1
+    fi
     
     case "$pkg_manager" in
         apt)
             info "Using apt to install Gum..."
             {
-                sudo mkdir -p /etc/apt/keyrings && \
-                curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg && \
-                echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list > /dev/null && \
-                sudo apt update && \
-                sudo apt install -y gum
+                $sudo_cmd apt update && \
+                $sudo_cmd apt install -y curl gpg && \
+                $sudo_cmd mkdir -p /etc/apt/keyrings && \
+                curl -fsSL https://repo.charm.sh/apt/gpg.key | $sudo_cmd gpg --dearmor -o /etc/apt/keyrings/charm.gpg && \
+                echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | $sudo_cmd tee /etc/apt/sources.list.d/charm.list > /dev/null && \
+                $sudo_cmd apt update && \
+                $sudo_cmd apt install -y gum
             } &> "$log_file" && install_success=true
             ;;
         dnf|yum)
@@ -157,8 +167,8 @@ name=Charm
 baseurl=https://repo.charm.sh/yum/
 enabled=1
 gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo > /dev/null && \
-                sudo "$pkg_manager" install -y gum
+gpgkey=https://repo.charm.sh/yum/gpg.key' | $sudo_cmd tee /etc/yum.repos.d/charm.repo > /dev/null && \
+                $sudo_cmd "$pkg_manager" install -y gum
             } &> "$log_file" && install_success=true
             ;;
         brew)
@@ -167,11 +177,11 @@ gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
             ;;
         apk)
             info "Using apk to install Gum..."
-            sudo apk add --no-cache gum &> "$log_file" && install_success=true
+            $sudo_cmd apk add --no-cache gum &> "$log_file" && install_success=true
             ;;
         pacman)
             info "Using pacman to install Gum..."
-            sudo pacman -S --noconfirm gum &> "$log_file" && install_success=true
+            $sudo_cmd pacman -S --needed --noconfirm gum &> "$log_file" && install_success=true
             ;;
         *)
             warn "Unsupported package manager: $pkg_manager"

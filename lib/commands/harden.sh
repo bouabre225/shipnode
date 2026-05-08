@@ -187,6 +187,7 @@ EOF
 # Main harden command
 cmd_harden() {
     load_config
+    ensure_gum_for_ui
 
     info "ShipNode Security Hardening"
     info "This wizard will guide you through basic server hardening."

@@ -10,13 +10,6 @@ cmd_setup() {
 
     success "SSH connection successful"
 
-    # Install Gum for enhanced UI (optional, non-blocking)
-    echo ""
-    info "Checking for Gum UI framework..."
-    if ! install_gum; then
-        warn "Continuing without Gum. The wizard will use classic prompts."
-    fi
-
     # Install Node.js, PM2, and Caddy
     info "Installing dependencies on server..."
 

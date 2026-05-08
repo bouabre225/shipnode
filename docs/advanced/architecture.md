@@ -97,13 +97,13 @@ Modules are loaded in a specific order to ensure dependencies are available:
 
 #### core.sh (247 lines)
 
-**Purpose:** Global variables, colors, logging functions, OS detection, Gum installation, template rendering
+**Purpose:** Global variables, colors, logging functions, OS detection, optional Gum helper, template rendering
 
 **Key Functions:**
 - `error()`, `success()`, `info()`, `warn()` - Logging functions
 - `has_gum()` - Check if Gum is installed
 - `detect_os()` - Detect OS and package manager
-- `install_gum()` - Install Gum UI framework
+- `install_gum()` - Optional local Gum UI installer
 - `render_template()` - Replace `{{VAR}}` placeholders in template files using sed
 - `resolve_template()` - Find user template (ejected or project-root) before falling back to built-in
 
@@ -192,6 +192,7 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `gum_confirm()` - Enhanced confirmation with Gum fallback
 - `gum_style()` - Enhanced styling with Gum fallback
 - `show_gum_tip()` - Show Gum installation tip
+- `ensure_gum_for_ui()` - Auto-install Gum for interactive local commands when possible
 
 #### templates.sh (172 lines)
 

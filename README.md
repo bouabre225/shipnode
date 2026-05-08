@@ -678,7 +678,7 @@ Customize with `.shipnodeignore` (like `.gitignore`).
 | Port already in use | Change `BACKEND_PORT` or kill the process |
 | Health check fails | Verify `/health` endpoint: `ssh root@server "curl localhost:3000/health"` |
 | Deployment lock stuck | `shipnode unlock` |
-| Gum installation fails | Install manually: `sudo apt install gum` |
+| Gum installation fails | Interactive commands try to install Gum locally; install manually from https://github.com/charmbracelet/gum |
 | Framework not detected | Install `jq`, or select manually in wizard |
 
 ---

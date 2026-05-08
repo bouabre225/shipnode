@@ -1982,6 +1982,10 @@ cmd_init() {
         i=$((i + 1))
     done
 
+    if [ "$list_templates_flag" = false ] && [ "$non_interactive_flag" = false ] && [ "$print_mode" = false ]; then
+        ensure_gum_for_ui
+    fi
+
     # Route to appropriate handler
     if [ "$list_templates_flag" = true ]; then
         list_templates

@@ -8,13 +8,13 @@ The `shipnode` entry point sources core modules, command modules, then calls `ma
 
 Core modules:
 
-- `lib/core.sh`: globals, logging, OS detection, Gum install, template rendering.
+- `lib/core.sh`: globals, logging, OS detection, optional Gum helper, template rendering.
 - `lib/release.sh`: release management, locks, health checks, rollback helpers.
 - `lib/database.sh`: PostgreSQL, MySQL, SQLite, and Redis setup.
 - `lib/users.sh`: user provisioning.
 - `lib/framework.sh`: framework detection.
 - `lib/validation.sh`: input validation.
-- `lib/prompts.sh`: Gum UI wrappers with shell fallbacks.
+- `lib/prompts.sh`: Gum UI wrappers, local auto-install helper, and shell fallbacks.
 - `lib/pkg-manager.sh`: npm/yarn/pnpm/bun detection.
 - `lib/templates.sh`: framework presets.
 
