@@ -71,6 +71,117 @@ IGNORE_EOF
     success "Created .shipnodeignore"
 }
 
+sanitize_db_identifier() {
+    local value="$1"
+    value=$(echo "$value" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9_]+/_/g' | sed -E 's/^_+|_+$//g')
+    [ -z "$value" ] && value="app"
+    if [[ "$value" =~ ^[0-9] ]]; then
+        value="app_$value"
+    fi
+    echo "$value"
+}
+
+prompt_database_setup() {
+    local app_name="$1"
+    local remote_path="$2"
+    local default_db_prefix
+    default_db_prefix=$(sanitize_db_identifier "$app_name")
+
+    db_setup_enabled="false"
+    db_type="postgresql"
+    db_name="${default_db_prefix}_db"
+    db_user="${default_db_prefix}_user"
+    db_password_expr='${DB_PASSWORD:-}'
+    db_sqlite_path="$remote_path/shared/database.sqlite"
+    redis_setup_enabled="false"
+
+    echo ""
+    info "Database and cache setup"
+    if [ "$USE_GUM" = false ]; then
+        echo "Optionally provision a local database/cache on the remote server during shipnode setup"
+    fi
+    echo ""
+
+    if [ "$USE_GUM" = true ]; then
+        db_type=$(gum choose "none" "postgresql" "mysql" "sqlite" --header "Database to provision on server:" --cursor "> ")
+        db_type="${db_type:-none}"
+    else
+        local db_choice
+        echo "Database to provision:"
+        echo "  1) none"
+        echo "  2) postgresql"
+        echo "  3) mysql"
+        echo "  4) sqlite"
+        read -p "Choose database [1]: " db_choice
+        case "${db_choice:-1}" in
+            2) db_type="postgresql" ;;
+            3) db_type="mysql" ;;
+            4) db_type="sqlite" ;;
+            *) db_type="none" ;;
+        esac
+    fi
+
+    if [ "$db_type" != "none" ]; then
+        db_setup_enabled="true"
+
+        if [ "$db_type" = "postgresql" ] || [ "$db_type" = "mysql" ]; then
+            if [ "$USE_GUM" = true ]; then
+                db_name=$(gum input --placeholder "$db_name" --prompt "Database name: " --value "$db_name")
+                db_user=$(gum input --placeholder "$db_user" --prompt "Database user: " --value "$db_user")
+            else
+                echo "  (Database and user are created by shipnode setup)"
+                prompt_with_default "Database name" "$db_name" "db_name"
+                prompt_with_default "Database user" "$db_user" "db_user"
+            fi
+            db_name=$(sanitize_db_identifier "$db_name")
+            db_user=$(sanitize_db_identifier "$db_user")
+        elif [ "$db_type" = "sqlite" ]; then
+            if [ "$USE_GUM" = true ]; then
+                db_sqlite_path=$(gum input --placeholder "$db_sqlite_path" --prompt "SQLite path: " --value "$db_sqlite_path")
+            else
+                echo "  (Keep SQLite under shared/ so it survives releases)"
+                prompt_with_default "SQLite database path" "$db_sqlite_path" "db_sqlite_path"
+            fi
+        fi
+    else
+        db_type="postgresql"
+    fi
+
+    if [ "$USE_GUM" = true ]; then
+        if gum confirm "Set up Redis on localhost?" --default=false; then
+            redis_setup_enabled="true"
+        fi
+    else
+        if prompt_yes_no "Set up Redis on localhost?" "n"; then
+            redis_setup_enabled="true"
+        fi
+    fi
+}
+
+emit_database_config() {
+    echo ""
+    echo "# Database setup"
+    echo "DB_SETUP_ENABLED=$db_setup_enabled"
+    echo "DB_TYPE=$db_type"
+
+    if [ "$db_type" = "postgresql" ] || [ "$db_type" = "mysql" ]; then
+        echo "DB_NAME=$db_name"
+        echo "DB_USER=$db_user"
+        echo "DB_PASSWORD=$db_password_expr"
+    elif [ "$db_type" = "sqlite" ]; then
+        echo "DB_SQLITE_PATH=$db_sqlite_path"
+    else
+        echo "# DB_NAME=myapp_db"
+        echo "# DB_USER=myapp_user"
+        echo "# DB_PASSWORD=\${DB_PASSWORD:-}"
+        echo "# DB_SQLITE_PATH=$remote_path/shared/database.sqlite"
+    fi
+
+    echo ""
+    echo "# Redis setup"
+    echo "REDIS_SETUP_ENABLED=$redis_setup_enabled"
+}
+
 # Generate .shipnode/ directory with smart hook templates
 generate_shipnode_hooks() {
     # Create .shipnode directory
@@ -1385,6 +1496,9 @@ cmd_init_interactive() {
     local health_path="/health"
     local health_timeout="30"
     local health_retries="3"
+
+    local db_setup_enabled db_type db_name db_user db_password_expr db_sqlite_path redis_setup_enabled
+    prompt_database_setup "$app_name" "$remote_path"
     
     # 7. Configuration summary
     echo ""
@@ -1403,6 +1517,8 @@ cmd_init_interactive() {
             $([ "$app_type" = "backend" ] && echo "Backend Port:  $backend_port") \
             $([ -n "$domain" ] && echo "Domain:        $domain") \
             "Zero-downtime: $zero_downtime" \
+            $([ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type") \
+            $([ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost") \
             $([ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ] && echo "Health Checks: $health_path (${health_timeout}s, $health_retries retries)")
     else
         echo -e "${BLUE}════════════════════════════════════${NC}"
@@ -1419,6 +1535,8 @@ cmd_init_interactive() {
         
         [ -n "$domain" ] && echo "Domain:        $domain"
         echo "Zero-downtime: $zero_downtime"
+        [ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type"
+        [ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost"
         
         if [ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ]; then
             echo "Health Checks: $health_path (${health_timeout}s timeout, ${health_retries} retries)"
@@ -1506,6 +1624,8 @@ HEALTH_CHECK_TIMEOUT=$health_timeout
 HEALTH_CHECK_RETRIES=$health_retries
 EOF
     fi
+
+    emit_database_config >> shipnode.conf
 
     success "Created shipnode.conf"
 
@@ -1839,6 +1959,9 @@ cmd_init_interactive_print() {
     local health_path="/health"
     local health_timeout="30"
     local health_retries="3"
+
+    local db_setup_enabled db_type db_name db_user db_password_expr db_sqlite_path redis_setup_enabled
+    prompt_database_setup "$app_name" "$remote_path" >&2
     
     # 7. Configuration summary
     echo ""
@@ -1857,6 +1980,8 @@ cmd_init_interactive_print() {
             $([ "$app_type" = "backend" ] && echo "Backend Port:  $backend_port") \
             $([ -n "$domain" ] && echo "Domain:        $domain") \
             "Zero-downtime: $zero_downtime" \
+            $([ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type") \
+            $([ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost") \
             $([ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ] && echo "Health Checks: $health_path (${health_timeout}s, $health_retries retries)")
     else
         echo -e "${BLUE}════════════════════════════════════${NC}"
@@ -1873,6 +1998,8 @@ cmd_init_interactive_print() {
         
         [ -n "$domain" ] && echo "Domain:        $domain"
         echo "Zero-downtime: $zero_downtime"
+        [ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type"
+        [ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost"
         
         if [ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ]; then
             echo "Health Checks: $health_path (${health_timeout}s, $health_retries retries)"
@@ -1949,6 +2076,8 @@ cmd_init_interactive_print() {
         echo "HEALTH_CHECK_TIMEOUT=$health_timeout"
         echo "HEALTH_CHECK_RETRIES=$health_retries"
     fi
+
+    emit_database_config
 }
 
 # Initialize config file (router)
