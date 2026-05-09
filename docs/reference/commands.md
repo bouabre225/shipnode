@@ -60,6 +60,15 @@ All ShipNode commands with descriptions.
 | `shipnode env pull` | Download .env from server |
 | `shipnode env list` | List environment variables |
 
+## Backup Commands
+
+| Command | Description |
+|---------|-------------|
+| `shipnode backup setup` | Install/update database backup script and systemd timer |
+| `shipnode backup run` | Run a database backup immediately |
+| `shipnode backup status` | Show timer status, recent logs, and local backups |
+| `shipnode backup list` | List uploaded backups in S3 |
+
 ## User Commands
 
 | Command | Description |

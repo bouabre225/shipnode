@@ -15,6 +15,7 @@ MODULES=(
     "lib/core.sh"
     "lib/release.sh"
     "lib/database.sh"
+    "lib/backup.sh"
     "lib/users.sh"
     "lib/framework.sh"
     "lib/validation.sh"
@@ -31,6 +32,7 @@ MODULES=(
     "lib/commands/rollback.sh"
     "lib/commands/migrate.sh"
     "lib/commands/env.sh"
+    "lib/commands/backup.sh"
     "lib/commands/help.sh"
     "lib/commands/main.sh"
 )

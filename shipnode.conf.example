@@ -127,3 +127,27 @@ DB_PASSWORD=${DB_PASSWORD:-}
 
 # Enable Redis installation and localhost setup
 REDIS_SETUP_ENABLED=false
+
+# ============================================
+# Database Backups to S3
+# ============================================
+# Enable scheduled database backups during setup
+DB_BACKUP_ENABLED=false
+
+# S3 bucket and optional prefix for uploaded backup files
+# DB_BACKUP_S3_BUCKET=my-backups
+# DB_BACKUP_S3_PREFIX=myapp
+
+# Backup schedule: hourly, daily, weekly, or a systemd OnCalendar expression
+# DB_BACKUP_SCHEDULE=daily
+
+# Local compressed backup retention on the server
+# DB_BACKUP_RETENTION_DAYS=14
+
+# Optional S3-compatible endpoint (MinIO, R2, Spaces, etc.)
+# DB_BACKUP_S3_ENDPOINT=
+
+# AWS/S3 credentials. Prefer putting real values in .env and running shipnode env.
+# AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+# AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+# AWS_DEFAULT_REGION=eu-west-1

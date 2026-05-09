@@ -93,6 +93,7 @@ ENDSSH
 
     # Setup databases/caches if enabled
     setup_databases
+    setup_database_backups
 
     success "Server setup complete"
     info "Ready to deploy with: shipnode deploy"

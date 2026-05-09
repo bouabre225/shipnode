@@ -60,6 +60,17 @@ cmd_config_show() {
 
     echo ""
 
+    echo "  Database Backups:"
+    echo "    Enabled:    ${DB_BACKUP_ENABLED:-false}"
+    if [ "${DB_BACKUP_ENABLED:-false}" = "true" ]; then
+        echo "    Bucket:     ${DB_BACKUP_S3_BUCKET:-}"
+        echo "    Prefix:     ${DB_BACKUP_S3_PREFIX:-${PM2_APP_NAME:-$(basename "$REMOTE_PATH")}}"
+        echo "    Schedule:   ${DB_BACKUP_SCHEDULE:-daily}"
+        echo "    Retention:  ${DB_BACKUP_RETENTION_DAYS:-14} days (local)"
+    fi
+
+    echo ""
+
     if [ -f ".shipnode/templates/ecosystem.config.cjs" ]; then
         echo "  Templates:"
         echo "    PM2:       .shipnode/templates/ecosystem.config.cjs (custom)"
@@ -126,6 +137,21 @@ cmd_config_validate() {
                 fi
             fi
         done
+    fi
+
+    if grep -q "^DB_BACKUP_ENABLED=true" "$SHIPNODE_CONFIG_FILE" 2>/dev/null; then
+        if ! grep -q "^DB_BACKUP_S3_BUCKET=" "$SHIPNODE_CONFIG_FILE" 2>/dev/null; then
+            warn "  Missing: DB_BACKUP_S3_BUCKET (required when DB_BACKUP_ENABLED=true)"
+            errors=$((errors + 1))
+        else
+            local bucket=$(grep "^DB_BACKUP_S3_BUCKET=" "$SHIPNODE_CONFIG_FILE" | cut -d= -f2)
+            if [ -z "$bucket" ]; then
+                warn "  Empty: DB_BACKUP_S3_BUCKET"
+                errors=$((errors + 1))
+            else
+                success "  DB_BACKUP_S3_BUCKET=$bucket"
+            fi
+        fi
     fi
 
     echo ""

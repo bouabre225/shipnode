@@ -616,7 +616,43 @@ DB_USER=myapp_user           # PostgreSQL/MySQL user to create
 DB_PASSWORD=${DB_PASSWORD:-} # PostgreSQL/MySQL password from env or .env
 DB_SQLITE_PATH=              # Optional; defaults to $REMOTE_PATH/shared/database.sqlite
 REDIS_SETUP_ENABLED=false    # Set true to install/configure Redis on localhost
+
+# === Database backups to S3 ===
+DB_BACKUP_ENABLED=false      # Set true to configure scheduled backups
+DB_BACKUP_S3_BUCKET=         # S3 bucket for uploaded backup files
+DB_BACKUP_S3_PREFIX=myapp    # Optional path prefix inside the bucket
+DB_BACKUP_SCHEDULE=daily     # hourly, daily, weekly, or systemd OnCalendar
+DB_BACKUP_RETENTION_DAYS=14  # Local compressed backup retention
+DB_BACKUP_S3_ENDPOINT=       # Optional S3-compatible endpoint
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_DEFAULT_REGION=eu-west-1
 ```
+
+### Database Backups
+
+ShipNode can install a small remote backup script and a systemd timer that dumps the configured PostgreSQL, MySQL, or SQLite database, compresses it, and uploads it to S3.
+
+```bash
+DB_BACKUP_ENABLED=true
+DB_BACKUP_S3_BUCKET=my-backups
+DB_BACKUP_S3_PREFIX=myapp/production
+DB_BACKUP_SCHEDULE=daily
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_DEFAULT_REGION=eu-west-1
+```
+
+Put real AWS/S3 credentials in `.env`, upload them with `shipnode env`, then configure backups:
+
+```bash
+shipnode setup
+shipnode backup setup
+shipnode backup run
+shipnode backup status
+```
+
+Use `DB_BACKUP_S3_ENDPOINT` for S3-compatible storage such as Cloudflare R2, MinIO, or DigitalOcean Spaces. `DB_BACKUP_RETENTION_DAYS` controls local compressed files on the server; use your bucket lifecycle policy for S3 retention.
 
 ### Supported Frameworks
 

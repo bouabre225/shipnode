@@ -69,6 +69,9 @@ main() {
         env)
             cmd_env
             ;;
+        backup)
+            cmd_backup "${cmd_args[@]}"
+            ;;
         status)
             cmd_status
             ;;

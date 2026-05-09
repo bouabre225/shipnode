@@ -129,6 +129,37 @@ Run schema migrations from `.shipnode/pre-deploy.sh`; database creation and migr
 
 Keep SQLite files under `shared/` so they survive release switches and cleanup. ShipNode rejects paths inside `$REMOTE_PATH/current/` or `$REMOTE_PATH/releases/`.
 
+### Database Backups
+
+When `DB_BACKUP_ENABLED=true`, `shipnode setup` and `shipnode backup setup` install a remote backup script at `$REMOTE_PATH/shared/shipnode-backup.sh` and enable a systemd timer. Backups are compressed locally, uploaded to S3, and can be run manually with `shipnode backup run`.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `DB_BACKUP_ENABLED` | boolean | `false` | Enable scheduled database backups |
+| `DB_BACKUP_S3_BUCKET` | string | - | S3 bucket where backups are uploaded |
+| `DB_BACKUP_S3_PREFIX` | string | app name | Optional S3 key prefix |
+| `DB_BACKUP_SCHEDULE` | string | `daily` | `hourly`, `daily`, `weekly`, or a systemd `OnCalendar` value |
+| `DB_BACKUP_RETENTION_DAYS` | number | `14` | Days to keep local compressed backups on the server |
+| `DB_BACKUP_S3_ENDPOINT` | string | - | Optional S3-compatible endpoint |
+| `AWS_ACCESS_KEY_ID` | string | - | S3 access key, preferably from `.env` |
+| `AWS_SECRET_ACCESS_KEY` | string | - | S3 secret key, preferably from `.env` |
+| `AWS_DEFAULT_REGION` | string | - | S3 region |
+
+Example:
+
+```bash
+DB_BACKUP_ENABLED=true
+DB_BACKUP_S3_BUCKET=my-backups
+DB_BACKUP_S3_PREFIX=myapp/production
+DB_BACKUP_SCHEDULE=daily
+DB_BACKUP_RETENTION_DAYS=14
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_DEFAULT_REGION=eu-west-1
+```
+
+Store real credentials in `.env`, run `shipnode env`, then run `shipnode backup setup`. S3 object retention should be managed with bucket lifecycle rules; ShipNode only prunes local compressed files.
+
 ### Advanced
 
 | Variable | Type | Description |

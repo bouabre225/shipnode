@@ -28,6 +28,10 @@ Global Options:
     config validate     Validate config without deploying
     metrics             Show real-time PM2 resource metrics (backend)
     env                 Upload .env file to server
+    backup setup        Install/update database backup script and timer
+    backup run          Run a database backup now
+    backup status       Show database backup timer and recent logs
+    backup list         List database backups in S3
     status              Check application status
     logs                View application logs (backend only)
     restart             Restart application (backend only)
@@ -105,6 +109,9 @@ Examples:
     shipnode deploy --config custom.conf  # Deploy using custom config file
     shipnode --profile prod deploy     # Alternative flag position
     shipnode env                       # Upload .env file to server
+    shipnode backup setup              # Configure scheduled database backups
+    shipnode backup run                # Run a database backup now
+    shipnode backup status             # Show backup timer and logs
     shipnode unlock                    # Clear stuck deployment lock
     shipnode rollback                  # Rollback to previous release
     shipnode rollback 2                # Rollback 2 releases back

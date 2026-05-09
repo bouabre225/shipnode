@@ -101,6 +101,31 @@ DB_PASSWORD=${DB_PASSWORD:-}
 
 `DB_TYPE` can be `postgresql`, `mysql`, or `sqlite`. PostgreSQL/MySQL setup installs the server if missing, starts/enables it, creates the database/user, and grants privileges. SQLite setup installs `sqlite3` and creates a database file at `DB_SQLITE_PATH`, defaulting to `$REMOTE_PATH/shared/database.sqlite`. Keep SQLite files under `shared/`; ShipNode rejects paths inside `current/` or `releases/`.
 
+### Database Backups to S3
+
+Enable backups when ShipNode should dump the configured database and upload compressed files to S3 on a schedule:
+
+```bash
+DB_BACKUP_ENABLED=true
+DB_BACKUP_S3_BUCKET=my-backups
+DB_BACKUP_S3_PREFIX=myapp/production
+DB_BACKUP_SCHEDULE=daily
+DB_BACKUP_RETENTION_DAYS=14
+AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+AWS_DEFAULT_REGION=eu-west-1
+```
+
+Put the real `AWS_*` values in `.env`, upload them with `shipnode env`, then run:
+
+```bash
+shipnode backup setup
+shipnode backup run
+shipnode backup status
+```
+
+`DB_BACKUP_SCHEDULE` accepts `hourly`, `daily`, `weekly`, or a systemd `OnCalendar` expression. Set `DB_BACKUP_S3_ENDPOINT` for S3-compatible providers.
+
 Enable Redis separately:
 
 ```bash

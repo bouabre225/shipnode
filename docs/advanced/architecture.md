@@ -6,7 +6,7 @@ This document describes the internal architecture and module organization of Shi
 
 ShipNode is organized as a modular bash project to improve maintainability, testability, and collaboration. The codebase is split into focused modules, each with a single responsibility.
 
-**Total: ~8,350 lines** across 26 modules.
+**Total: ~8,350 lines** across 32 modules.
 
 ## Directory Structure
 
@@ -18,6 +18,7 @@ shipnode/
 │   ├── pkg-manager.sh         # Package manager detection + PM2 template generation (236 lines)
 │   ├── release.sh             # Release management with metadata tracking (263 lines)
 │   ├── database.sh            # Database and Redis operations
+│   ├── backup.sh              # Database backup operations
 │   ├── users.sh               # User provisioning helpers (352 lines)
 │   ├── framework.sh           # Framework detection (259 lines)
 │   ├── validation.sh          # Input validation (287 lines)
@@ -37,6 +38,7 @@ shipnode/
 │       ├── rollback.sh        # Rollback command (86 lines)
 │       ├── migrate.sh         # Migrate command (92 lines)
 │       ├── env.sh             # Environment upload (42 lines)
+│       ├── backup.sh          # Database backup commands
 │       ├── eject.sh           # Eject PM2/Caddy templates (266 lines)
 │       ├── metrics.sh         # PM2 resource monitoring (12 lines)
 │       ├── config-cmd.sh      # Config show/validate/path (137 lines)
@@ -64,32 +66,34 @@ Modules are loaded in a specific order to ensure dependencies are available:
 2. **pkg-manager.sh** - Depends on core.sh
 3. **release.sh** - Depends on core.sh
 4. **database.sh** - Depends on core.sh
-5. **users.sh** - Depends on core.sh
-6. **framework.sh** - Depends on core.sh
-7. **validation.sh** - Depends on core.sh
-8. **prompts.sh** - Depends on core.sh
-9. **templates.sh** - Depends on core.sh
-10. **commands/config.sh** - Depends on core.sh
-11. **commands/users-yaml.sh** - Depends on core.sh, validation.sh
-12. **commands/user.sh** - Depends on core.sh, users.sh, validation.sh
-13. **commands/mkpasswd.sh** - Depends on core.sh
-14. **commands/init.sh** - Depends on core.sh, framework.sh, validation.sh, prompts.sh
-15. **commands/setup.sh** - Depends on core.sh, release.sh, database.sh
-16. **commands/deploy.sh** - Depends on core.sh, release.sh, pkg-manager.sh
-17. **commands/doctor.sh** - Depends on core.sh
-18. **commands/status.sh** - Depends on core.sh
-19. **commands/unlock.sh** - Depends on core.sh, release.sh
-20. **commands/rollback.sh** - Depends on core.sh, release.sh
-21. **commands/migrate.sh** - Depends on core.sh, release.sh
-22. **commands/env.sh** - Depends on core.sh
-23. **commands/eject.sh** - Depends on core.sh
-24. **commands/metrics.sh** - Depends on core.sh
-25. **commands/config-cmd.sh** - Depends on core.sh
-26. **commands/upgrade.sh** - Depends on core.sh
-27. **commands/ci.sh** - Depends on core.sh
-28. **commands/harden.sh** - Depends on core.sh
-29. **commands/help.sh** - Depends on core.sh
-30. **commands/main.sh** - Depends on all other modules
+5. **backup.sh** - Depends on core.sh
+6. **users.sh** - Depends on core.sh
+7. **framework.sh** - Depends on core.sh
+8. **validation.sh** - Depends on core.sh
+9. **prompts.sh** - Depends on core.sh
+10. **templates.sh** - Depends on core.sh
+11. **commands/config.sh** - Depends on core.sh
+12. **commands/users-yaml.sh** - Depends on core.sh, validation.sh
+13. **commands/user.sh** - Depends on core.sh, users.sh, validation.sh
+14. **commands/mkpasswd.sh** - Depends on core.sh
+15. **commands/init.sh** - Depends on core.sh, framework.sh, validation.sh, prompts.sh
+16. **commands/setup.sh** - Depends on core.sh, release.sh, database.sh, backup.sh
+17. **commands/deploy.sh** - Depends on core.sh, release.sh, pkg-manager.sh
+18. **commands/doctor.sh** - Depends on core.sh
+19. **commands/status.sh** - Depends on core.sh
+20. **commands/unlock.sh** - Depends on core.sh, release.sh
+21. **commands/rollback.sh** - Depends on core.sh, release.sh
+22. **commands/migrate.sh** - Depends on core.sh, release.sh
+23. **commands/env.sh** - Depends on core.sh
+24. **commands/backup.sh** - Depends on core.sh, backup.sh
+25. **commands/eject.sh** - Depends on core.sh
+26. **commands/metrics.sh** - Depends on core.sh
+27. **commands/config-cmd.sh** - Depends on core.sh
+28. **commands/upgrade.sh** - Depends on core.sh
+29. **commands/ci.sh** - Depends on core.sh
+30. **commands/harden.sh** - Depends on core.sh
+31. **commands/help.sh** - Depends on core.sh
+32. **commands/main.sh** - Depends on all other modules
 
 ## Module Descriptions
 
@@ -139,6 +143,16 @@ Modules are loaded in a specific order to ensure dependencies are available:
 - `setup_mysql()` - Install and configure MySQL
 - `setup_sqlite()` - Install SQLite and create database file
 - `setup_redis()` - Install and configure Redis
+
+#### backup.sh
+
+**Purpose:** Database backup configuration, remote script installation, and S3 upload operations
+
+**Key Functions:**
+- `setup_database_backups()` - Install dependencies, write backup files, and configure timer
+- `run_database_backup()` - Run a backup immediately on the remote server
+- `list_database_backups()` - List uploaded backups in S3
+- `show_database_backup_status()` - Show systemd timer status, logs, and local backups
 
 #### users.sh (352 lines)
 
@@ -330,6 +344,13 @@ Modules are loaded in a specific order to ensure dependencies are available:
 
 **Key Functions:**
 - `cmd_env()` - Upload .env file to server
+
+#### commands/backup.sh
+
+**Purpose:** Database backup command router
+
+**Key Functions:**
+- `cmd_backup()` - Route backup subcommands: setup, run, status, list
 
 #### commands/ci.sh (362 lines)
 

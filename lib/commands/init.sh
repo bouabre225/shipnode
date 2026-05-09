@@ -180,6 +180,18 @@ emit_database_config() {
     echo ""
     echo "# Redis setup"
     echo "REDIS_SETUP_ENABLED=$redis_setup_enabled"
+
+    echo ""
+    echo "# Database backups to S3"
+    echo "DB_BACKUP_ENABLED=false"
+    echo "# DB_BACKUP_S3_BUCKET=my-backups"
+    echo "# DB_BACKUP_S3_PREFIX=$app_name"
+    echo "# DB_BACKUP_SCHEDULE=daily"
+    echo "# DB_BACKUP_RETENTION_DAYS=14"
+    echo "# DB_BACKUP_S3_ENDPOINT="
+    echo "# AWS_ACCESS_KEY_ID=\${AWS_ACCESS_KEY_ID:-}"
+    echo "# AWS_SECRET_ACCESS_KEY=\${AWS_SECRET_ACCESS_KEY:-}"
+    echo "# AWS_DEFAULT_REGION=eu-west-1"
 }
 
 # Generate .shipnode/ directory with smart hook templates
@@ -437,6 +449,17 @@ HEALTH_CHECK_ENABLED=true
 HEALTH_CHECK_PATH=/health
 HEALTH_CHECK_TIMEOUT=30
 HEALTH_CHECK_RETRIES=3
+
+# Database backups to S3
+DB_BACKUP_ENABLED=false
+# DB_BACKUP_S3_BUCKET=my-backups
+# DB_BACKUP_S3_PREFIX=myapp
+# DB_BACKUP_SCHEDULE=daily
+# DB_BACKUP_RETENTION_DAYS=14
+# DB_BACKUP_S3_ENDPOINT=
+# AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+# AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+# AWS_DEFAULT_REGION=eu-west-1
 EOF
 
     success "Created shipnode.conf"
@@ -491,6 +514,17 @@ HEALTH_CHECK_ENABLED=true
 HEALTH_CHECK_PATH=/health
 HEALTH_CHECK_TIMEOUT=30
 HEALTH_CHECK_RETRIES=3
+
+# Database backups to S3
+DB_BACKUP_ENABLED=false
+# DB_BACKUP_S3_BUCKET=my-backups
+# DB_BACKUP_S3_PREFIX=myapp
+# DB_BACKUP_SCHEDULE=daily
+# DB_BACKUP_RETENTION_DAYS=14
+# DB_BACKUP_S3_ENDPOINT=
+# AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+# AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+# AWS_DEFAULT_REGION=eu-west-1
 EOF
 }
 
