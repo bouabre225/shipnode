@@ -5,6 +5,18 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-05-10
+
+### Added
+
+#### Database Backups
+- **`shipnode backup setup`**: Install/update a remote database backup script and systemd timer
+- **`shipnode backup run`**: Run a PostgreSQL, MySQL/MariaDB, or SQLite backup immediately
+- **`shipnode backup status`**: Show backup timer status, recent logs, and local backup files
+- **`shipnode backup list`**: List uploaded backups in S3
+- S3-compatible upload support with optional custom endpoint
+- Backup configuration in `shipnode.conf` and generated init configs
+
 ## [1.3.1] - 2026-04-08
 
 ### Added
