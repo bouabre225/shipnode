@@ -39,8 +39,14 @@ init_users_yaml() {
         echo ""
         echo "Authentication method:"
         echo "  1) SSH key"
-        echo "  2) Password"
-        read -p "Choose (1-2): " -n 1 auth_choice
+        if generate_sha512_password_hash "shipnode-check" >/dev/null 2>&1; then
+            echo "  2) Password"
+            read -p "Choose (1-2): " -n 1 auth_choice
+        else
+            warn "Password users require mkpasswd, which is not available on this system."
+            info "Use an SSH public key for this user."
+            auth_choice="1"
+        fi
         echo ""
         echo ""
 

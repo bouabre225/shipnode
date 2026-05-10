@@ -45,7 +45,7 @@ prompt_yes_no() {
 generate_password_hash() {
     local password=$1
     ensure_mkpasswd
-    mkpasswd -m sha-512 "$password"
+    generate_sha512_password_hash "$password"
 }
 
 # Validate email address

@@ -1,3 +1,14 @@
+generate_sha512_password_hash() {
+    local password="$1"
+
+    if command -v mkpasswd &> /dev/null; then
+        mkpasswd -m sha-512 "$password"
+        return $?
+    fi
+
+    return 1
+}
+
 install_mkpasswd() {
     if command -v mkpasswd &> /dev/null; then
         return 0
@@ -67,11 +78,11 @@ install_mkpasswd() {
 }
 
 ensure_mkpasswd() {
-    if command -v mkpasswd &> /dev/null; then
+    if generate_sha512_password_hash "shipnode-check" >/dev/null 2>&1; then
         return 0
     fi
 
-    install_mkpasswd || error "mkpasswd not found. Install it manually with your package manager (Debian/Ubuntu: sudo apt-get install whois)"
+    install_mkpasswd || error "mkpasswd not found. Password users are unavailable on this system. Use an SSH public key instead, or install mkpasswd manually (Debian/Ubuntu: sudo apt-get install whois)."
 }
 
 cmd_mkpasswd() {
@@ -95,7 +106,8 @@ cmd_mkpasswd() {
     fi
 
     # Generate hash
-    local hash=$(mkpasswd -m sha-512 "$password")
+    local hash
+    hash=$(generate_sha512_password_hash "$password") || error "Failed to generate password hash"
 
     echo ""
     success "Password hash generated:"
