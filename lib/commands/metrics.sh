@@ -8,5 +8,7 @@ cmd_metrics() {
     info "Opening PM2 monitoring dashboard for $PM2_APP_NAME..."
     info "Press Ctrl+C to exit"
     echo ""
-    ssh_cmd -t -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 monit"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    ssh_cmd -t -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 monit"
 }

@@ -273,11 +273,32 @@ cmd_deploy() {
 
     # Create remote directory
     remote_exec "mkdir -p $REMOTE_PATH"
+    sync_env_file_for_deploy
 
     if [ "$APP_TYPE" = "backend" ]; then
         deploy_backend "$SKIP_BUILD"
     else
         deploy_frontend "$SKIP_BUILD"
+    fi
+}
+
+sync_env_file_for_deploy() {
+    local local_env="${ENV_FILE:-.env}"
+
+    if [ ! -f "$local_env" ]; then
+        info "No local env file found at $local_env; using existing server env if present"
+        return 0
+    fi
+
+    if [ "$ZERO_DOWNTIME" = "true" ]; then
+        info "Uploading $local_env to shared environment..."
+        remote_exec "mkdir -p $REMOTE_PATH/shared"
+        remote_copy "$local_env" "$SSH_USER@$SSH_HOST:$REMOTE_PATH/shared/.env"
+        success "Uploaded $local_env to $REMOTE_PATH/shared/.env"
+    else
+        info "Uploading $local_env to deployment directory..."
+        remote_copy "$local_env" "$SSH_USER@$SSH_HOST:$REMOTE_PATH/.env"
+        success "Uploaded $local_env to $REMOTE_PATH/.env"
     fi
 }
 

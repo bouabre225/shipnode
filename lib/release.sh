@@ -2,6 +2,16 @@ generate_release_timestamp() {
     date +"%Y%m%d%H%M%S"
 }
 
+current_time_ms() {
+    local value
+    value=$(date +%s%3N 2>/dev/null || true)
+    if [[ "$value" =~ ^[0-9]+$ ]]; then
+        echo "$value"
+    else
+        echo $(( $(date +%s) * 1000 ))
+    fi
+}
+
 get_release_path() {
     local timestamp=$1
     echo "$REMOTE_PATH/releases/$timestamp"
@@ -74,11 +84,11 @@ perform_health_check() {
         _HEALTH_CHECK_ATTEMPTS=$i
 
         local start_ms
-        start_ms=$(date +%s%3N 2>/dev/null || echo "0")
+        start_ms=$(current_time_ms)
 
         if remote_exec "timeout $timeout curl -sf http://localhost:$port$path" > /dev/null 2>&1; then
             local end_ms
-            end_ms=$(date +%s%3N 2>/dev/null || echo "0")
+            end_ms=$(current_time_ms)
             if [ "$start_ms" != "0" ] && [ "$end_ms" != "0" ]; then
                 _HEALTH_CHECK_RESPONSE_MS=$(( end_ms - start_ms ))
             fi
@@ -196,10 +206,17 @@ run_pre_deploy_hook() {
         export PM2_APP_NAME="${PM2_APP_NAME:-}"
         export BACKEND_PORT="${BACKEND_PORT:-}"
         export SHARED_ENV_PATH="$REMOTE_PATH/shared/.env"
+        export NODE_VERSION="${NODE_VERSION:-24}"
 
         # Make hook executable and run it
         chmod +x .shipnode-pre-deploy.sh
-        ./.shipnode-pre-deploy.sh
+        MISE_BIN="\$(command -v mise 2>/dev/null || true)"
+        [ -z "\$MISE_BIN" ] && [ -x "\$HOME/.local/bin/mise" ] && MISE_BIN="\$HOME/.local/bin/mise"
+        if [ -n "\$MISE_BIN" ]; then
+            "\$MISE_BIN" exec "node@\$NODE_VERSION" -- ./.shipnode-pre-deploy.sh
+        else
+            ./.shipnode-pre-deploy.sh
+        fi
 
         # Cleanup hook script
         rm -f .shipnode-pre-deploy.sh
@@ -245,10 +262,17 @@ run_post_deploy_hook() {
         export PM2_APP_NAME="${PM2_APP_NAME:-}"
         export BACKEND_PORT="${BACKEND_PORT:-}"
         export SHARED_ENV_PATH="$REMOTE_PATH/shared/.env"
+        export NODE_VERSION="${NODE_VERSION:-24}"
 
         # Make hook executable and run it
         chmod +x .shipnode-post-deploy.sh
-        ./.shipnode-post-deploy.sh
+        MISE_BIN="\$(command -v mise 2>/dev/null || true)"
+        [ -z "\$MISE_BIN" ] && [ -x "\$HOME/.local/bin/mise" ] && MISE_BIN="\$HOME/.local/bin/mise"
+        if [ -n "\$MISE_BIN" ]; then
+            "\$MISE_BIN" exec "node@\$NODE_VERSION" -- ./.shipnode-post-deploy.sh
+        else
+            ./.shipnode-post-deploy.sh
+        fi
 
         # Cleanup hook script
         rm -f .shipnode-post-deploy.sh

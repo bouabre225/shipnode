@@ -64,6 +64,8 @@ Update `package.json`:
 }
 ```
 
+> **Important:** ShipNode runs your application using the `start` script from `package.json`. Make sure you have a `start` script defined — ShipNode will execute `npm start` (or `yarn start`, `pnpm start`, `bun start` depending on your package manager) to start your application.
+
 ## Step 3: Initialize ShipNode
 
 ```bash

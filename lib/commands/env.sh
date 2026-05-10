@@ -27,11 +27,23 @@ cmd_env() {
 
     success "Uploaded $LOCAL_ENV to $TARGET_PATH"
 
+    if [ "$ZERO_DOWNTIME" = "true" ]; then
+        remote_exec bash << ENDSSH
+            set -e
+            if [ -d "$REMOTE_PATH/current" ]; then
+                ln -sfn "$REMOTE_PATH/shared/.env" "$REMOTE_PATH/current/.env"
+            fi
+ENDSSH
+        success "Linked shared .env to current release"
+    fi
+
     # Restart backend app if running to reload env vars
     if [ "$APP_TYPE" = "backend" ]; then
+        local node_version="${NODE_VERSION:-24}"
+        [ "$node_version" = "lts" ] && node_version="24"
         info "Restarting app to reload environment variables..."
-        if remote_exec "pm2 describe $PM2_APP_NAME" &> /dev/null; then
-            remote_exec "pm2 reload $PM2_APP_NAME"
+        if remote_exec "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 describe $PM2_APP_NAME" &> /dev/null; then
+            remote_exec "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 reload $PM2_APP_NAME --update-env"
             success "App restarted with new environment variables"
         else
             warn "App not running. Environment variables will be loaded on next deploy."

@@ -50,8 +50,10 @@ shipnode deploy
 2. **Install** - `npm install` on the server
 3. **Build** - Runs `npm run build` if defined
 4. **Switch** - Atomically updates the `current` symlink
-5. **Reload** - PM2 gracefully reloads the app
+5. **Reload** - PM2 gracefully reloads the app using your `start` script
 6. **Health Check** - Tests `localhost:3000/health`
+
+> **Note:** ShipNode uses your `package.json` `start` script to run the application. Ensure you have a `start` script defined (e.g., `"start": "node dist/server.js"`). ShipNode will run `npm start` (or equivalent for your package manager) via PM2.
 
 ### Health Check Configuration
 

@@ -50,6 +50,8 @@ DOMAIN=myapp.com
 | `PM2_APP_NAME` | string | - | PM2 process name |
 | `BACKEND_PORT` | number | `3000` | Application port |
 
+> **Required:** Your `package.json` must have a `start` script. ShipNode runs `npm start` (or `yarn start`, `pnpm start`, `bun start`) via PM2 to start your application. There is no `shipnode.conf` option to override the entry file — use your `package.json` `start` script or eject the PM2 template (`shipnode eject pm2`) for custom configurations.
+
 ### Frontend Options
 
 | Variable | Type | Default | Description |

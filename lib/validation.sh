@@ -188,15 +188,44 @@ get_remote_port_process() {
             pid=\$(netstat -tlnp 2>/dev/null | grep \":$port \" | head -1 | awk '{print \$7}' | cut -d'/' -f1)
         fi
         
-        if [ -n \"\$pid\" ]; then
-            # Check if it's a PM2 process
-            if pm2 describe \$pid >/dev/null 2>&1 || pm2 list | grep -q \"\$pid\"; then
-                # Get PM2 app name
-                pm2 list | grep \"\$pid\" | awk '{print \$4}' | head -1
+        pm2_cmd() {
+            if command -v pm2 >/dev/null 2>&1; then
+                pm2 \"\$@\"
+            elif [ -x \"\$HOME/.local/bin/mise\" ]; then
+                \"\$HOME/.local/bin/mise\" exec \"node@${NODE_VERSION:-24}\" -- pm2 \"\$@\"
             else
-                # Get process name from PID
-                ps -p \$pid -o comm= 2>/dev/null || echo \"unknown\"
+                return 127
             fi
+        }
+
+        is_child_of() {
+            local child=\$1
+            local parent=\$2
+
+            while [ -n \"\$child\" ] && [ \"\$child\" != \"1\" ]; do
+                if [ \"\$child\" = \"\$parent\" ]; then
+                    return 0
+                fi
+                child=\$(ps -o ppid= -p \"\$child\" 2>/dev/null | tr -d ' ')
+            done
+
+            return 1
+        }
+
+        if [ -n \"\$pid\" ]; then
+            if pm2_cmd jlist >/tmp/shipnode-pm2-jlist.json 2>/dev/null && command -v jq >/dev/null 2>&1; then
+                while IFS='|' read -r app_pid app_name; do
+                    if [ -n \"\$app_pid\" ] && is_child_of \"\$pid\" \"\$app_pid\"; then
+                        echo \"\$app_name\"
+                        exit 0
+                    fi
+                done <<PM2_APPS
+\$(jq -r '.[] | select(.pid != null and .pid != 0) | \"\(.pid)|\(.name)\"' /tmp/shipnode-pm2-jlist.json)
+PM2_APPS
+            fi
+
+            # Get process name from PID
+            ps -p \$pid -o comm= 2>/dev/null || echo \"unknown\"
         fi
     " 2>/dev/null)
     
