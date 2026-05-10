@@ -233,20 +233,32 @@ check_remote_environment() {
 
     local ssh_port="${SSH_PORT:-22}"
     local pkg_manager=$(detect_pkg_manager)
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
 
     # Single batched SSH call for all remote checks
     local remote_output
-    remote_output=$(remote_exec bash << 'REMOTE_CHECKS'
+    remote_output=$(remote_exec bash -s "$node_version" "$pkg_manager" << 'REMOTE_CHECKS'
+        NODE_VERSION="$1"
+        PKG_MANAGER="$2"
+        export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
+        if command -v mise &> /dev/null; then
+            echo "RUNTIME_OK:$(mise --version | head -n1)"
+        else
+            echo "RUNTIME_MISSING"
+        fi
+
         # Check node
-        if command -v node &> /dev/null; then
-            echo "NODE_OK:$(node --version)"
+        if command -v mise &> /dev/null && mise exec "node@$NODE_VERSION" -- node --version &> /dev/null; then
+            echo "NODE_OK:$(mise exec "node@$NODE_VERSION" -- node --version)"
         else
             echo "NODE_MISSING"
         fi
 
         # Check PM2
-        if command -v pm2 &> /dev/null; then
-            echo "PM2_OK:$(pm2 --version)"
+        if command -v mise &> /dev/null && mise exec "node@$NODE_VERSION" -- pm2 --version &> /dev/null; then
+            echo "PM2_OK:$(mise exec "node@$NODE_VERSION" -- pm2 --version)"
         else
             echo "PM2_MISSING"
         fi
@@ -265,16 +277,32 @@ check_remote_environment() {
         echo "DISK:$disk_avail"
 
         # Check package managers
-        command -v npm &> /dev/null && echo "PKG_NPM_OK"
-        command -v yarn &> /dev/null && echo "PKG_YARN_OK"
-        command -v pnpm &> /dev/null && echo "PKG_PNPM_OK"
-        command -v bun &> /dev/null && echo "PKG_BUN_OK"
+        if [ "$PKG_MANAGER" = "bun" ]; then
+            command -v bun &> /dev/null && echo "PKG_BUN_OK"
+            [ -x "$HOME/.bun/bin/bun" ] && echo "PKG_BUN_OK"
+        elif command -v mise &> /dev/null && mise exec "node@$NODE_VERSION" -- "$PKG_MANAGER" --version &> /dev/null; then
+            if [ "$PKG_MANAGER" = "npm" ]; then
+                echo "PKG_NPM_OK"
+            elif [ "$PKG_MANAGER" = "yarn" ]; then
+                echo "PKG_YARN_OK"
+            elif [ "$PKG_MANAGER" = "pnpm" ]; then
+                echo "PKG_PNPM_OK"
+            fi
+        fi
 REMOTE_CHECKS
     )
 
     local has_errors=false
 
     # Parse node check
+    if echo "$remote_output" | grep -q "RUNTIME_OK:"; then
+        local runtime_version=$(echo "$remote_output" | grep "RUNTIME_OK:" | cut -d: -f2-)
+        echo "  ✓ per-project runtime available ($runtime_version)"
+    else
+        echo "  ✗ per-project runtime not found (run: shipnode setup)"
+        has_errors=true
+    fi
+
     if echo "$remote_output" | grep -q "NODE_OK:"; then
         local node_version=$(echo "$remote_output" | grep "NODE_OK:" | cut -d: -f2)
         echo "  ✓ node available ($node_version)"

@@ -9,6 +9,14 @@ validate_db_identifier() {
 }
 
 setup_databases() {
+	if [ -z "${DB_PASSWORD:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+		local db_url_auth="${DATABASE_URL#*://}"
+		db_url_auth="${db_url_auth%%@*}"
+		if [[ "$db_url_auth" == *:* ]]; then
+			DB_PASSWORD="${db_url_auth#*:}"
+		fi
+	fi
+
 	if [ "${DB_SETUP_ENABLED:-false}" = "true" ]; then
 		case "${DB_TYPE:-postgresql}" in
 			postgresql|postgres|pg)
@@ -35,7 +43,7 @@ setup_databases() {
 setup_postgresql() {
 	# Validate required variables
 	if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
-		warn "PostgreSQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD not set in config"
+		warn "PostgreSQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD is missing. Set DB_PASSWORD in .env or shipnode.conf."
 		return 1
 	fi
 
@@ -119,7 +127,7 @@ ENDSSH
 
 setup_mysql() {
 	if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
-		warn "MySQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD not set in config"
+		warn "MySQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD is missing. Set DB_PASSWORD in .env or shipnode.conf."
 		return 1
 	fi
 
