@@ -246,5 +246,5 @@ echo "Usage:"
 echo -e "  ${BLUE}bash $DIST_DIR/$INSTALLER_NAME${NC}"
 echo
 echo "Or upload to GitHub releases for users to download:"
-echo -e "  ${BLUE}curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh && bash shipnode-installer.sh${NC}"
+echo -e "  ${BLUE}curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash${NC}"
 echo

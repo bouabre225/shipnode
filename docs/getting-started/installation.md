@@ -10,10 +10,10 @@ Install ShipNode on your local machine to deploy apps to your server.
 
 ## Install (Recommended)
 
-Download and run the self-extracting installer:
+Run the installer:
 
 ```bash
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh && bash shipnode-installer.sh
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
 ```
 
 Or download manually:
@@ -64,7 +64,7 @@ To update to the latest version:
 
 ```bash
 # Installed via installer
-curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh -o shipnode-installer.sh && bash shipnode-installer.sh
+curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
 
 # From source
 cd shipnode

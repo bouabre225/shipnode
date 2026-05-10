@@ -12,7 +12,7 @@
       </p>
       <div class="hero-actions">
         <div class="install-cmd" id="install-cmd">
-          <code>curl -fsSL https://shipnode.dev/install -o shipnode-installer.sh && bash shipnode-installer.sh</code>
+          <code>curl -fsSL https://shipnode.dev/install | bash</code>
           <button class="copy-btn" id="copy-btn" aria-label="Copy install command">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="12" height="12" rx="2"></rect>
@@ -355,7 +355,7 @@
 </style>
 
 <script>
-  const installCommand = "curl -fsSL https://shipnode.dev/install -o shipnode-installer.sh && bash shipnode-installer.sh";
+  const installCommand = "curl -fsSL https://shipnode.dev/install | bash";
   const copyBtn = document.getElementById("copy-btn");
   const toast = document.getElementById("copy-toast");
   let toastTimer: number | undefined;
