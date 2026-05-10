@@ -50,6 +50,8 @@ apply_ssh_config() {
     local key="$1"
     local value="$2"
     remote_exec bash << EOF
+        # Uncomment if the key is commented out
+        sudo sed -i "s/^#\(${key}[[:space:]]\)/\1/" /etc/ssh/sshd_config
         # Check if the configuration already exists
         if grep -qE "^${key}[[:space:]]" /etc/ssh/sshd_config; then
             # Update existing line
@@ -91,7 +93,7 @@ check_ufw() {
 EOF
 }
 
-# Install UFW if not present
+# Install UFW if not present (supports multiple package managers)
 install_ufw() {
     remote_exec bash << 'EOF'
         set -e
@@ -99,12 +101,26 @@ install_ufw() {
         if [ "$EUID" -ne 0 ]; then
             SUDO="sudo"
         fi
-        $SUDO apt-get update
-        $SUDO apt-get install -y ufw
+
+        if command -v apt &> /dev/null; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y ufw
+        elif command -v dnf &> /dev/null; then
+            $SUDO dnf install -y ufw
+        elif command -v yum &> /dev/null; then
+            $SUDO yum install -y ufw
+        elif command -v apk &> /dev/null; then
+            $SUDO apk add --no-cache ufw
+        elif command -v pacman &> /dev/null; then
+            $SUDO pacman -S --needed --noconfirm ufw
+        else
+            echo "ERROR: No supported package manager found (apt, dnf, yum, apk, pacman)"
+            exit 1
+        fi
 EOF
 }
 
-# Apply firewall rules
+# Apply firewall rules (non-destructive - preserves existing rules)
 apply_firewall_rules() {
     local ssh_port="${1:-22}"
     remote_exec bash << EOF
@@ -114,19 +130,27 @@ apply_firewall_rules() {
             SUDO="sudo"
         fi
 
-        # Reset to defaults
-        \$SUDO ufw --force reset
+        # Back up existing rules if any
+        if \$SUDO ufw status | grep -q "Status: active"; then
+            \$SUDO ufw status numbered > /tmp/ufw-rules-backup-\$(date +%s).txt 2>/dev/null || true
+        fi
 
-        # Default policies
-        \$SUDO ufw default deny incoming
-        \$SUDO ufw default allow outgoing
+        # Set default policies (only if not already set)
+        \$SUDO ufw default deny incoming 2>/dev/null || true
+        \$SUDO ufw default allow outgoing 2>/dev/null || true
 
-        # Allow SSH
-        \$SUDO ufw allow ${ssh_port}/tcp
+        # Allow SSH (only if not already allowed)
+        if ! \$SUDO ufw status | grep -qE "^\[?${ssh_port}\]"; then
+            \$SUDO ufw allow ${ssh_port}/tcp
+        fi
 
-        # Allow HTTP and HTTPS
-        \$SUDO ufw allow 80/tcp
-        \$SUDO ufw allow 443/tcp
+        # Allow HTTP and HTTPS (only if not already allowed)
+        if ! \$SUDO ufw status | grep -q "80/tcp"; then
+            \$SUDO ufw allow 80/tcp
+        fi
+        if ! \$SUDO ufw status | grep -q "443/tcp"; then
+            \$SUDO ufw allow 443/tcp
+        fi
 
         # Enable firewall
         echo "y" | \$SUDO ufw enable
@@ -148,18 +172,37 @@ check_fail2ban() {
 EOF
 }
 
-# Install and configure fail2ban
+# Install and configure fail2ban (supports multiple package managers)
 install_configure_fail2ban() {
-    remote_exec bash << 'EOF'
+    remote_exec bash << 'ENDSSH'
         set -e
         SUDO=""
         if [ "$EUID" -ne 0 ]; then
             SUDO="sudo"
         fi
 
-        # Install fail2ban
-        $SUDO apt-get update
-        $SUDO apt-get install -y fail2ban
+        # Install fail2ban for the detected package manager
+        if command -v apt &> /dev/null; then
+            $SUDO apt-get update
+            $SUDO apt-get install -y fail2ban
+        elif command -v dnf &> /dev/null; then
+            $SUDO dnf install -y fail2ban
+        elif command -v yum &> /dev/null; then
+            $SUDO yum install -y fail2ban
+        elif command -v apk &> /dev/null; then
+            $SUDO apk add --no-cache fail2ban
+        elif command -v pacman &> /dev/null; then
+            $SUDO pacman -S --needed --noconfirm fail2ban
+        else
+            echo "ERROR: No supported package manager found"
+            exit 1
+        fi
+
+        # Determine log path based on distro
+        local log_path="/var/log/auth.log"
+        if [ -f "/var/log/secure" ]; then
+            log_path="/var/log/secure"
+        fi
 
         # Create basic SSH jail configuration
         cat << 'JAILCONF' | $SUDO tee /etc/fail2ban/jail.local > /dev/null
@@ -174,14 +217,17 @@ bantime = 3600
 enabled = true
 port = ssh
 filter = sshd
-logpath = /var/log/auth.log
+logpath = LOGPATH
 maxretry = 5
 JAILCONF
 
+        # Replace placeholder with actual log path
+        $SUDO sed -i "s|LOGPATH|${log_path}|g" /etc/fail2ban/jail.local
+
         # Enable and start fail2ban
-        $SUDO systemctl enable fail2ban
+        $SUDO systemctl enable fail2ban 2>/dev/null || true
         $SUDO systemctl restart fail2ban
-EOF
+ENDSSH
 }
 
 # Main harden command
@@ -264,6 +310,15 @@ cmd_harden() {
             esac
 
             if [ -n "$new_port" ]; then
+                # Check if port is already in use on the remote server
+                local port_in_use=$(remote_exec "ss -tlnp 2>/dev/null | grep -c ':${new_port} ' || true")
+                if [ "${port_in_use:-0}" -gt 0 ]; then
+                    warn "Port $new_port is already in use on the remote server. Skipping port change."
+                    new_port=""
+                fi
+            fi
+
+            if [ -n "$new_port" ]; then
                 echo ""
                 warn "Changing SSH port to $new_port"
                 echo ""
@@ -276,6 +331,8 @@ cmd_harden() {
                 if gum_confirm "Proceed with changing SSH port to $new_port?" "n"; then
                     apply_ssh_config "Port" "$new_port"
                     SSH_PORT="$new_port"
+                    # Persist SSH_PORT to shipnode.conf on the server
+                    remote_exec "sed -i 's/^SSH_PORT=.*/SSH_PORT=${new_port}/' ${REMOTE_PATH}/shipnode.conf" 2>/dev/null || true
                     ((changes_made++))
                     success "SSH port configured: $new_port"
                     echo ""
@@ -427,7 +484,8 @@ cmd_harden() {
                 echo "  - Find time: 10 minutes"
                 echo "  - Ban time: 1 hour"
                 echo ""
-                echo "Rollback: sudo systemctl stop fail2ban && sudo apt remove fail2ban"
+                echo "Rollback: sudo systemctl stop fail2ban && sudo systemctl disable fail2ban"
+                echo "         Then remove the package using your system's package manager"
                 echo ""
                 ((changes_made++))
             else
