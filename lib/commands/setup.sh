@@ -46,13 +46,32 @@ cmd_setup() {
             echo "jq already installed: $(jq --version)"
         fi
 
-        # Install Node.js (using NodeSource)
+        install_node=false
         if ! command -v node &> /dev/null; then
-            echo "Installing Node.js $NODE_VERSION..."
+            install_node=true
+        else
+            CURRENT_NODE_MAJOR=$(node --version | sed -E 's/^v([0-9]+).*/\1/')
+            if [ "$CURRENT_NODE_MAJOR" != "$NODE_VERSION" ]; then
+                echo "Node.js $(node --version) found, but v$NODE_VERSION.x is configured."
+                install_node=true
+            elif ! command -v npm &> /dev/null; then
+                echo "Node.js $(node --version) found, but npm is missing."
+                install_node=true
+            else
+                echo "Node.js already installed: $(node --version)"
+            fi
+        fi
+
+        # Install Node.js (using NodeSource)
+        if [ "$install_node" = true ]; then
+            echo "Installing Node.js $NODE_VERSION.x..."
             curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | $SUDO bash -
             $SUDO apt-get install -y nodejs
-        else
-            echo "Node.js already installed: $(node --version)"
+        fi
+
+        if ! command -v npm &> /dev/null; then
+            echo "Error: npm is required but was not installed"
+            exit 1
         fi
 
         # Install PM2
