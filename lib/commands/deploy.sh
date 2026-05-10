@@ -344,7 +344,10 @@ deploy_backend_legacy() {
     info "Installing dependencies..."
     remote_exec bash << ENDSSH
         set -e
+        export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
         cd $REMOTE_PATH
+        mise use -y "node@${NODE_VERSION:-24}"
+        mise install -y
         $PKG_INSTALL_CMD
 
         # Build if package.json has build script and not skipping
@@ -378,8 +381,10 @@ ENDSSH
 
     remote_exec bash << ENDSSH
         set -e
-        pm2 startOrReload $REMOTE_PATH/ecosystem.config.cjs --update-env
-        pm2 save
+        export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
+        cd $REMOTE_PATH
+        mise exec -- pm2 startOrReload $REMOTE_PATH/ecosystem.config.cjs --update-env
+        mise exec -- pm2 save
 ENDSSH
 
     success "Backend deployed and running"
@@ -440,7 +445,10 @@ deploy_backend_zero_downtime() {
     info "Setting up release environment..."
     remote_exec bash << ENDSSH
         set -e
+        export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
         cd $release_path
+        mise use -y "node@${NODE_VERSION:-24}"
+        mise install -y
 
         # Link shared .env if it exists
         if [ -f $REMOTE_PATH/shared/.env ]; then
@@ -484,8 +492,10 @@ ENDSSH
 
     remote_exec bash << ENDSSH
         set -e
-        pm2 startOrReload $REMOTE_PATH/shared/ecosystem.config.cjs --update-env
-        pm2 save
+        export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
+        cd $REMOTE_PATH/current
+        mise exec -- pm2 startOrReload $REMOTE_PATH/shared/ecosystem.config.cjs --update-env
+        mise exec -- pm2 save
 ENDSSH
 
     # Wait for app to start

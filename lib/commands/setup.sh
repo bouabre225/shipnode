@@ -25,10 +25,11 @@ cmd_setup() {
         info "Extracted major version: $node_version"
     fi
 
+    [ "$node_version" = "lts" ] && node_version="24"
     info "Node.js version: $node_version"
 
-    remote_exec bash << 'ENDSSH'
-        NODE_VERSION="'"$node_version"'"
+    remote_exec bash -s "$node_version" << 'ENDSSH'
+        NODE_VERSION="$1"
         set -e
 
         # Detect if running as root and set sudo prefix
@@ -46,41 +47,29 @@ cmd_setup() {
             echo "jq already installed: $(jq --version)"
         fi
 
-        install_node=false
-        if ! command -v node &> /dev/null; then
-            install_node=true
-        else
-            CURRENT_NODE_MAJOR=$(node --version | sed -E 's/^v([0-9]+).*/\1/')
-            if [ "$CURRENT_NODE_MAJOR" != "$NODE_VERSION" ]; then
-                echo "Node.js $(node --version) found, but v$NODE_VERSION.x is configured."
-                install_node=true
-            elif ! command -v npm &> /dev/null; then
-                echo "Node.js $(node --version) found, but npm is missing."
-                install_node=true
-            else
-                echo "Node.js already installed: $(node --version)"
-            fi
+        export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
+        if ! command -v mise &> /dev/null; then
+            echo "Installing per-project Node runtime..."
+            curl https://mise.run | sh
+            export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
         fi
 
-        # Install Node.js (using NodeSource)
-        if [ "$install_node" = true ]; then
-            echo "Installing Node.js $NODE_VERSION.x..."
-            curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | $SUDO bash -
-            $SUDO apt-get install -y nodejs
-        fi
+        echo "Installing Node.js $NODE_VERSION for this deployment user..."
+        mise install -y "node@$NODE_VERSION"
 
-        if ! command -v npm &> /dev/null; then
+        if ! mise exec "node@$NODE_VERSION" -- npm --version >/dev/null 2>&1; then
             echo "Error: npm is required but was not installed"
             exit 1
         fi
 
         # Install PM2
-        if ! command -v pm2 &> /dev/null; then
+        if ! mise exec "node@$NODE_VERSION" -- pm2 --version >/dev/null 2>&1; then
             echo "Installing PM2..."
-            $SUDO npm install -g pm2
-            pm2 startup systemd -u $USER --hp $HOME
+            mise exec "node@$NODE_VERSION" -- npm install -g pm2
+            mise exec "node@$NODE_VERSION" -- pm2 startup systemd -u $USER --hp $HOME || true
         else
-            echo "PM2 already installed: $(pm2 --version)"
+            echo "PM2 already installed: $(mise exec "node@$NODE_VERSION" -- pm2 --version)"
         fi
 
         # Install Caddy

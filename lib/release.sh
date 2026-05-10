@@ -152,10 +152,14 @@ rollback_to_release() {
     switch_symlink "$release_path"
 
     if [ "$APP_TYPE" = "backend" ]; then
+        local node_version="${NODE_VERSION:-24}"
+        [ "$node_version" = "lts" ] && node_version="24"
         remote_exec bash << ENDSSH
             set -e
-            pm2 startOrReload $REMOTE_PATH/shared/ecosystem.config.cjs --update-env
-            pm2 save
+            export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
+            cd $REMOTE_PATH/current
+            mise exec node@$node_version -- pm2 startOrReload $REMOTE_PATH/shared/ecosystem.config.cjs --update-env
+            mise exec node@$node_version -- pm2 save
 ENDSSH
     fi
 

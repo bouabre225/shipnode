@@ -12,15 +12,19 @@ cmd_status_backend() {
     info "Fetching status for $PM2_APP_NAME..."
 
     local status_data
-    status_data=$(remote_exec bash << 'ENDSSH'
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    status_data=$(remote_exec bash -s "$PM2_APP_NAME" "$REMOTE_PATH" "$BACKEND_PORT" "$node_version" << 'ENDSSH'
         set -e
 
         APP_NAME="$1"
         REMOTE_PATH="$2"
         BACKEND_PORT="$3"
+        NODE_VERSION="$4"
+        export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 
         # Get PM2 process data as JSON
-        PM2_JSON=$(pm2 jlist 2>/dev/null || echo "[]")
+        PM2_JSON=$(mise exec "node@$NODE_VERSION" -- pm2 jlist 2>/dev/null || echo "[]")
 
         # Find our app in PM2 list
         APP_JSON=$(echo "$PM2_JSON" | jq ".[] | select(.name == \"$APP_NAME\")" 2>/dev/null || echo "")
@@ -308,7 +312,9 @@ cmd_logs() {
     fi
 
     info "Streaming logs for $PM2_APP_NAME (Ctrl+C to exit)..."
-    ssh_cmd -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "pm2 logs $PM2_APP_NAME"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    ssh_cmd -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 logs $PM2_APP_NAME"
 }
 
 cmd_restart() {
@@ -319,7 +325,9 @@ cmd_restart() {
     fi
 
     info "Restarting $PM2_APP_NAME..."
-    remote_exec "pm2 restart $PM2_APP_NAME"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    remote_exec "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 restart $PM2_APP_NAME"
     success "App restarted"
 }
 
@@ -331,6 +339,8 @@ cmd_stop() {
     fi
 
     info "Stopping $PM2_APP_NAME..."
-    remote_exec "pm2 stop $PM2_APP_NAME"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    remote_exec "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- pm2 stop $PM2_APP_NAME"
     success "App stopped"
 }

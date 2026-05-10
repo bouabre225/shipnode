@@ -42,13 +42,13 @@ get_pkg_install_cmd() {
             echo "bun install"
             ;;
         pnpm)
-            echo "pnpm install"
+            echo "mise exec -- pnpm install"
             ;;
         yarn)
-            echo "yarn install"
+            echo "mise exec -- yarn install"
             ;;
         *)
-            echo "npm install"
+            echo "mise exec -- npm install"
             ;;
     esac
 }
@@ -62,13 +62,13 @@ get_pkg_run_cmd() {
             echo "bun run $script"
             ;;
         pnpm)
-            echo "pnpm run $script"
+            echo "mise exec -- pnpm run $script"
             ;;
         yarn)
-            echo "yarn run $script"
+            echo "mise exec -- yarn run $script"
             ;;
         *)
-            echo "npm run $script"
+            echo "mise exec -- npm run $script"
             ;;
     esac
 }
@@ -107,12 +107,15 @@ generate_ecosystem_file() {
 module.exports = {
   apps: [{
     name: "$app_name",
-    script: "$interpreter",
-    args: "start",
+    script: "mise",
+    args: "exec -- $interpreter start",
     cwd: "$cwd",
     autorestart: true,
     max_restarts: 10,
-    min_uptime: '10s'
+    min_uptime: '10s',
+    env: {
+      PATH: process.env.HOME + "/.local/bin:" + process.env.HOME + "/.local/share/mise/shims:" + process.env.PATH
+    }
   }]
 };
 EOF
@@ -122,6 +125,8 @@ EOF
 # Install package manager on remote server
 install_remote_pkg_manager() {
     local pkg_manager=$1
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
 
     # npm comes with Node.js, no need to install separately
     if [ "$pkg_manager" = "npm" ]; then
@@ -133,15 +138,11 @@ install_remote_pkg_manager() {
     if remote_exec bash << ENDSSH
         set -e
 
-        # Detect if running as root and set sudo prefix
-        SUDO=""
-        if [ "\$EUID" -ne 0 ]; then
-            SUDO="sudo"
-        fi
+        export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
 
         # Check if already installed
-        if command -v $pkg_manager > /dev/null 2>&1; then
-            echo "ALREADY_INSTALLED:\$($pkg_manager --version 2>/dev/null || $pkg_manager -v)"
+        if mise exec "node@$node_version" -- $pkg_manager --version > /dev/null 2>&1; then
+            echo "ALREADY_INSTALLED:\$(mise exec "node@$node_version" -- $pkg_manager --version 2>/dev/null || mise exec "node@$node_version" -- $pkg_manager -v)"
             exit 0
         fi
 
@@ -149,11 +150,11 @@ install_remote_pkg_manager() {
         case "$pkg_manager" in
             yarn)
                 echo "Installing yarn..."
-                \$SUDO npm install -g yarn
+                mise exec "node@$node_version" -- npm install -g yarn
                 ;;
             pnpm)
                 echo "Installing pnpm..."
-                \$SUDO npm install -g pnpm
+                mise exec "node@$node_version" -- npm install -g pnpm
                 ;;
             bun)
                 echo "Installing bun..."
@@ -169,8 +170,8 @@ install_remote_pkg_manager() {
         esac
 
         # Verify installation - check both command -v and bun-specific path
-        if command -v $pkg_manager > /dev/null 2>&1; then
-            echo "NEWLY_INSTALLED:\$($pkg_manager --version 2>/dev/null || $pkg_manager -v)"
+        if mise exec "node@$node_version" -- $pkg_manager --version > /dev/null 2>&1; then
+            echo "NEWLY_INSTALLED:\$(mise exec "node@$node_version" -- $pkg_manager --version 2>/dev/null || mise exec "node@$node_version" -- $pkg_manager -v)"
         elif [ "$pkg_manager" = "bun" ] && [ -x "\$HOME/.bun/bin/bun" ]; then
             echo "NEWLY_INSTALLED:\$(\$HOME/.bun/bin/bun --version)"
         else
@@ -188,11 +189,22 @@ ENDSSH
 # Verify package manager is installed on remote server
 verify_remote_pkg_manager() {
     local pkg_manager=$1
-    local node_version="${NODE_VERSION:-lts}"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
 
     info "Verifying $pkg_manager is installed on remote server..."
 
-    if ! remote_exec "command -v $pkg_manager > /dev/null 2>&1"; then
+    if [ "$pkg_manager" = "bun" ]; then
+        if remote_exec "command -v bun > /dev/null 2>&1 || [ -x \"\$HOME/.bun/bin/bun\" ]"; then
+            success "$pkg_manager is available on remote server"
+            return 0
+        fi
+    elif remote_exec "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; mise exec node@$node_version -- $pkg_manager --version > /dev/null 2>&1"; then
+        success "$pkg_manager is available on remote server"
+        return 0
+    fi
+
+    if true; then
         error "$pkg_manager is not installed on the remote server"
         echo ""
         echo "Please install $pkg_manager on the remote server:"
