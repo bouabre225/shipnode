@@ -13,7 +13,7 @@ cmd_upgrade() {
     # Use -w to get HTTP status code, -s for silent, -S to show errors
     api_response=$(curl -sSL -w "\n%{http_code}" "https://api.github.com/repos/devalade/shipnode/releases/latest" 2>/dev/null)
     http_code=$(echo "$api_response" | tail -n1)
-    api_response=$(echo "$api_response" | head -n-1)
+    api_response=$(printf '%s\n' "$api_response" | sed '$d')
 
     if [ "$http_code" = "404" ]; then
         error "No releases available yet. Please check $repo_url/releases"
