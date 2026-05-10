@@ -132,18 +132,23 @@ gum_choose() {
 # Returns:
 #   Exit code 0 for yes, 1 for no
 # Notes:
+#   - Uses gum choose for a visible selection list (more visible than inline toggle)
 #   - Auto-fallback to classic y/n prompt if Gum unavailable or no TTY
 #   - Uses existing prompt_yes_no function as fallback
 gum_confirm() {
     local message=$1
     local default=${2:-y}
-    
+
     # Check if we have a TTY (interactive terminal)
     if [ "$USE_GUM" = true ] && [ -t 0 ]; then
         if [ "$default" = "y" ]; then
-            gum confirm "$message" 2>/dev/null && return 0 || return 1
+            local choice
+            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "Yes" --no-limit 2>/dev/null || echo "No")
+            [ "$choice" = "Yes" ] && return 0 || return 1
         else
-            gum confirm "$message" --default=false 2>/dev/null && return 0 || return 1
+            local choice
+            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "No" --no-limit 2>/dev/null || echo "No")
+            [ "$choice" = "Yes" ] && return 0 || return 1
         fi
     else
         # Fallback to existing function

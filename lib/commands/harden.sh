@@ -276,6 +276,7 @@ cmd_harden() {
     echo ""
 
     # Ask if user wants to harden SSH
+    echo ""
     if gum_confirm "Would you like to configure SSH hardening?" "n"; then
         backup_path=$(backup_ssh_config)
         info "SSH config backed up to: $backup_path"
