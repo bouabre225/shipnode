@@ -745,6 +745,9 @@ cmd_init_template() {
     local health_timeout="30"
     local health_retries="3"
 
+    local db_setup_enabled db_type db_name db_user db_password_expr db_sqlite_path redis_setup_enabled
+    prompt_database_setup "$app_name" "$remote_path"
+
     # Configuration summary
     echo ""
     if [ "$USE_GUM" = true ]; then
@@ -763,6 +766,8 @@ cmd_init_template() {
             $([ "$app_type" = "backend" ] && echo "Backend Port:  $backend_port") \
             $([ -n "$domain" ] && echo "Domain:        $domain") \
             "Zero-downtime: $zero_downtime" \
+            $([ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type") \
+            $([ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost") \
             $([ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ] && echo "Health Checks: $health_check_path (${health_timeout}s, $health_retries retries)")
     else
         echo -e "${BLUE}════════════════════════════════════${NC}"
@@ -780,6 +785,8 @@ cmd_init_template() {
 
         [ -n "$domain" ] && echo "Domain:        $domain"
         echo "Zero-downtime: $zero_downtime"
+        [ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type"
+        [ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost"
 
         if [ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ]; then
             echo "Health Checks: $health_check_path (${health_timeout}s timeout, ${health_retries} retries)"
@@ -867,6 +874,8 @@ HEALTH_CHECK_TIMEOUT=$health_timeout
 HEALTH_CHECK_RETRIES=$health_retries
 EOF
     fi
+
+    emit_database_config >> shipnode.conf
 
     success "Created shipnode.conf"
 
@@ -1101,6 +1110,9 @@ cmd_init_template_print() {
     local health_timeout="30"
     local health_retries="3"
 
+    local db_setup_enabled db_type db_name db_user db_password_expr db_sqlite_path redis_setup_enabled
+    prompt_database_setup "$app_name" "$remote_path" >&2
+
     # Configuration summary
     echo ""
     if [ "$USE_GUM" = true ]; then
@@ -1119,6 +1131,8 @@ cmd_init_template_print() {
             $([ "$app_type" = "backend" ] && echo "Backend Port:  $backend_port") \
             $([ -n "$domain" ] && echo "Domain:        $domain") \
             "Zero-downtime: $zero_downtime" \
+            $([ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type") \
+            $([ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost") \
             $([ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ] && echo "Health Checks: $health_check_path (${health_timeout}s, $health_retries retries)")
     else
         echo -e "${BLUE}════════════════════════════════════${NC}"
@@ -1136,6 +1150,8 @@ cmd_init_template_print() {
 
         [ -n "$domain" ] && echo "Domain:        $domain"
         echo "Zero-downtime: $zero_downtime"
+        [ "$db_setup_enabled" = "true" ] && echo "Database:      $db_type"
+        [ "$redis_setup_enabled" = "true" ] && echo "Redis:         localhost"
 
         if [ "$app_type" = "backend" ] && [ "$health_enabled" = "true" ]; then
             echo "Health Checks: $health_check_path (${health_timeout}s, $health_retries retries)"
@@ -1212,6 +1228,8 @@ cmd_init_template_print() {
         echo "HEALTH_CHECK_TIMEOUT=$health_timeout"
         echo "HEALTH_CHECK_RETRIES=$health_retries"
     fi
+
+    emit_database_config
 }
 
 # Interactive initialization wizard
