@@ -9,6 +9,12 @@ validate_db_identifier() {
 }
 
 setup_databases() {
+	info "Checking database and cache setup..."
+
+	if [ -z "${DB_PASSWORD:-}" ] || [ -z "${DATABASE_URL:-}" ]; then
+		load_remote_database_env || true
+	fi
+
 	if [ -z "${DB_PASSWORD:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
 		local db_url_auth="${DATABASE_URL#*://}"
 		db_url_auth="${db_url_auth%%@*}"
@@ -18,6 +24,7 @@ setup_databases() {
 	fi
 
 	if [ "${DB_SETUP_ENABLED:-false}" = "true" ]; then
+		info "Database setup enabled (DB_TYPE=${DB_TYPE:-postgresql})"
 		case "${DB_TYPE:-postgresql}" in
 			postgresql|postgres|pg)
 				setup_postgresql
@@ -33,24 +40,69 @@ setup_databases() {
 				return 1
 				;;
 		esac
+	else
+		info "Database setup disabled (DB_SETUP_ENABLED=false)"
 	fi
 
 	if [ "${REDIS_SETUP_ENABLED:-false}" = "true" ]; then
 		setup_redis
+	else
+		info "Redis setup disabled (REDIS_SETUP_ENABLED=false)"
 	fi
+}
+
+load_remote_database_env() {
+	local remote_env="$REMOTE_PATH/shared/.env"
+	local env_output
+
+	env_output=$(remote_exec bash -s "$remote_env" <<'ENDSSH' 2>/dev/null || true
+        ENV_FILE="$1"
+        [ -f "$ENV_FILE" ] || exit 0
+
+        awk '
+            /^[[:space:]]*#/ || /^[[:space:]]*$/ { next }
+            /^[[:space:]]*(DB_PASSWORD|DATABASE_URL)=/ {
+                sub(/^[[:space:]]*/, "")
+                print
+            }
+        ' "$ENV_FILE"
+ENDSSH
+)
+
+	if [ -n "$env_output" ]; then
+		info "Loaded database secrets from $remote_env"
+	fi
+
+	while IFS='=' read -r key value; do
+		value="${value%\"}"
+		value="${value#\"}"
+		value="${value%\'}"
+		value="${value#\'}"
+		case "$key" in
+			DB_PASSWORD)
+				[ -z "${DB_PASSWORD:-}" ] && DB_PASSWORD="$value"
+				;;
+			DATABASE_URL)
+				[ -z "${DATABASE_URL:-}" ] && DATABASE_URL="$value"
+				;;
+		esac
+	done <<< "$env_output" || true
 }
 
 setup_postgresql() {
 	# Validate required variables
 	if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
-		warn "PostgreSQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD is missing. Set DB_PASSWORD in .env or shipnode.conf."
+		warn "PostgreSQL setup enabled but required values are missing."
+		[ -z "$DB_NAME" ] && warn "  Missing DB_NAME"
+		[ -z "$DB_USER" ] && warn "  Missing DB_USER"
+		[ -z "$DB_PASSWORD" ] && warn "  Missing DB_PASSWORD (set DB_PASSWORD in $REMOTE_PATH/shared/.env, shipnode.conf, or provide DATABASE_URL with a password)"
 		return 1
 	fi
 
 	validate_db_identifier "DB_NAME" "$DB_NAME" || return 1
 	validate_db_identifier "DB_USER" "$DB_USER" || return 1
 
-	info "Setting up PostgreSQL..."
+	info "Setting up PostgreSQL database '$DB_NAME' for user '$DB_USER'..."
 
 	ssh_cmd -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
 		DB_NAME="$DB_NAME" \
@@ -122,19 +174,22 @@ setup_postgresql() {
         echo "Connection string: postgresql://$DB_USER:[REDACTED]@localhost:5432/$DB_NAME"
 ENDSSH
 
-	success "PostgreSQL database '$DB_NAME' configured"
+	success "PostgreSQL database '$DB_NAME' configured for user '$DB_USER'"
 }
 
 setup_mysql() {
 	if [ -z "$DB_NAME" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASSWORD" ]; then
-		warn "MySQL setup enabled but DB_NAME, DB_USER, or DB_PASSWORD is missing. Set DB_PASSWORD in .env or shipnode.conf."
+		warn "MySQL setup enabled but required values are missing."
+		[ -z "$DB_NAME" ] && warn "  Missing DB_NAME"
+		[ -z "$DB_USER" ] && warn "  Missing DB_USER"
+		[ -z "$DB_PASSWORD" ] && warn "  Missing DB_PASSWORD (set DB_PASSWORD in $REMOTE_PATH/shared/.env, shipnode.conf, or provide DATABASE_URL with a password)"
 		return 1
 	fi
 
 	validate_db_identifier "DB_NAME" "$DB_NAME" || return 1
 	validate_db_identifier "DB_USER" "$DB_USER" || return 1
 
-	info "Setting up MySQL..."
+	info "Setting up MySQL database '$DB_NAME' for user '$DB_USER'..."
 
 	ssh_cmd -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
 		DB_NAME="$DB_NAME" \
@@ -175,7 +230,7 @@ SQL
         echo "Connection string: mysql://$DB_USER:[REDACTED]@localhost:3306/$DB_NAME"
 ENDSSH
 
-	success "MySQL database '$DB_NAME' configured"
+	success "MySQL database '$DB_NAME' configured for user '$DB_USER'"
 }
 
 setup_sqlite() {
