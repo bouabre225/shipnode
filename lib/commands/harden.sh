@@ -233,7 +233,6 @@ ENDSSH
 # Main harden command
 cmd_harden() {
     load_config
-    ensure_gum_for_ui
 
     info "ShipNode Security Hardening"
     info "This wizard will guide you through basic server hardening."
@@ -249,7 +248,8 @@ cmd_harden() {
     echo ""
 
     # Check SSH service status
-    local ssh_status=$(check_ssh_service)
+    local ssh_status
+    ssh_status=$(check_ssh_service)
     if [[ "$ssh_status" == *"NOT_FOUND"* ]]; then
         warn "SSH service not detected on remote server"
     elif [[ "$ssh_status" == *"INACTIVE"* ]]; then
@@ -259,275 +259,205 @@ cmd_harden() {
 
     local changes_made=0
     local backup_path=""
+    local ssh_changes=0
+    local summary=()
 
     # ==================== SSH Hardening ====================
     info "=== SSH Configuration Hardening ==="
     echo ""
 
-    # Show current SSH settings
-    local current_port=$(get_ssh_config "Port")
-    local current_permit_root=$(get_ssh_config "PermitRootLogin")
-    local current_password_auth=$(get_ssh_config "PasswordAuthentication")
+    local current_port current_permit_root current_password_auth
+    current_port=$(get_ssh_config "Port")
+    current_permit_root=$(get_ssh_config "PermitRootLogin")
+    current_password_auth=$(get_ssh_config "PasswordAuthentication")
 
     echo "Current SSH Configuration:"
-    echo "  Port: ${current_port:-22} (default if not set)"
-    echo "  PermitRootLogin: ${current_permit_root:-yes} (default if not set)"
-    echo "  PasswordAuthentication: ${current_password_auth:-yes} (default if not set)"
+    echo "  Port:                    ${current_port:-22 (default)}"
+    echo "  PermitRootLogin:         ${current_permit_root:-yes (default)}"
+    echo "  PasswordAuthentication:  ${current_password_auth:-yes (default)}"
     echo ""
 
-    # Ask if user wants to harden SSH
-    echo ""
-    if gum_confirm "Would you like to configure SSH hardening?" "n"; then
+    if prompt_yes_no "Configure SSH hardening?" "n"; then
         backup_path=$(backup_ssh_config)
         info "SSH config backed up to: $backup_path"
         echo ""
 
         # Change SSH port
-        if gum_confirm "Change SSH port from default (22)?" "n"; then
+        if prompt_yes_no "Change SSH port from ${current_port:-22}?" "n"; then
             echo ""
-            info "Available ports:"
-            echo "  1) 2222 (commonly used alternative)"
+            echo "  1) 2222 (common alternative)"
             echo "  2) 1022 (registered alternative)"
             echo "  3) Custom port"
             echo ""
-
-            local port_choice=$(gum_choose "Select new SSH port:" "2222" "1022" "Custom port")
+            read -rp "Select option [1-3]: " port_choice
 
             local new_port=""
             case "$port_choice" in
-                "2222")
-                    new_port="2222"
-                    ;;
-                "1022")
-                    new_port="1022"
-                    ;;
-                "Custom port")
-                    new_port=$(gum_input "Enter custom SSH port (1024-65535):" "")
+                1) new_port="2222" ;;
+                2) new_port="1022" ;;
+                3)
+                    read -rp "Enter port (1024-65535): " new_port
                     if [[ ! "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1024 ] || [ "$new_port" -gt 65535 ]; then
-                        warn "Invalid port number. Skipping port change."
+                        warn "Invalid port. Skipping."
                         new_port=""
                     fi
                     ;;
+                *) warn "Invalid choice. Skipping port change." ;;
             esac
 
             if [ -n "$new_port" ]; then
-                # Check if port is already in use on the remote server
-                local port_in_use=$(remote_exec "ss -tlnp 2>/dev/null | grep -c ':${new_port} ' || true")
+                local port_in_use
+                port_in_use=$(remote_exec "ss -tlnp 2>/dev/null | grep -c ':${new_port} ' || true")
                 if [ "${port_in_use:-0}" -gt 0 ]; then
-                    warn "Port $new_port is already in use on the remote server. Skipping port change."
+                    warn "Port $new_port already in use. Skipping."
                     new_port=""
                 fi
             fi
 
             if [ -n "$new_port" ]; then
                 echo ""
-                warn "Changing SSH port to $new_port"
+                warn "After this change connect with: ssh -p $new_port $SSH_USER@$SSH_HOST"
+                echo "Rollback: set 'Port $new_port' back to 'Port 22' in /etc/ssh/sshd_config"
                 echo ""
-                echo "⚠ IMPORTANT: Make sure to update your firewall and SSH client configuration!"
-                echo "   After this change, connect using: ssh -p $new_port $SSH_USER@$SSH_HOST"
-                echo ""
-                echo "Rollback: Edit /etc/ssh/sshd_config and change 'Port $new_port' to 'Port 22'"
-                echo ""
-
-                if gum_confirm "Proceed with changing SSH port to $new_port?" "n"; then
+                if prompt_yes_no "Proceed with port change to $new_port?" "n"; then
                     apply_ssh_config "Port" "$new_port"
                     SSH_PORT="$new_port"
-                    # Persist SSH_PORT to shipnode.conf on the server
                     sed -i "s/^SSH_PORT=.*/SSH_PORT=${new_port}/" shipnode.conf 2>/dev/null || true
-                    ((changes_made++))
-                    success "SSH port configured: $new_port"
-                    echo ""
-                else
-                    info "SSH port change skipped."
-                    echo ""
+                    ((ssh_changes++))
+                    summary+=("SSH port changed to $new_port")
                 fi
             fi
         fi
 
         # Disable root login
-        if gum_confirm "Disable root login via SSH?" "n"; then
-            echo ""
-            warn "This will prevent direct root SSH access."
-            echo "Rollback: Edit /etc/ssh/sshd_config and change 'PermitRootLogin no' to 'PermitRootLogin yes'"
-            echo ""
-
-            if gum_confirm "Proceed with disabling root login?" "n"; then
+        if prompt_yes_no "Disable root login via SSH?" "n"; then
+            echo "Rollback: set 'PermitRootLogin no' back to 'yes' in /etc/ssh/sshd_config"
+            if prompt_yes_no "Proceed?" "n"; then
                 apply_ssh_config "PermitRootLogin" "no"
-                ((changes_made++))
-                success "Root login disabled via SSH"
-                echo ""
-            else
-                info "Root login change skipped."
-                echo ""
+                ((ssh_changes++))
+                summary+=("Root login disabled")
             fi
         fi
 
         # Disable password authentication
-        if gum_confirm "Disable password authentication (key-based auth only)?" "n"; then
-            echo ""
-            warn "This will disable password authentication."
-            echo "⚠ WARNING: Make sure you have SSH key access configured before proceeding!"
-            echo ""
-            echo "Rollback: Edit /etc/ssh/sshd_config and change 'PasswordAuthentication no' to 'PasswordAuthentication yes'"
-            echo ""
-
-            if gum_confirm "Are you sure? You must have SSH key access!" "n"; then
+        if prompt_yes_no "Disable password authentication (key-based only)?" "n"; then
+            warn "Ensure SSH key access is configured before proceeding!"
+            echo "Rollback: set 'PasswordAuthentication no' back to 'yes' in /etc/ssh/sshd_config"
+            if prompt_yes_no "Proceed? (you must have SSH key access)" "n"; then
                 apply_ssh_config "PasswordAuthentication" "no"
-                ((changes_made++))
-                success "Password authentication disabled"
-                echo ""
-            else
-                info "Password authentication change skipped."
-                echo ""
+                ((ssh_changes++))
+                summary+=("Password authentication disabled")
             fi
         fi
 
-        # Restart SSH if changes were made
-        if [ $changes_made -gt 0 ]; then
+        if [ "$ssh_changes" -gt 0 ]; then
             echo ""
-            info "Restarting SSH service to apply changes..."
+            info "Restarting SSH service..."
             restart_ssh_service
             success "SSH service restarted"
-            echo ""
+            ((changes_made += ssh_changes))
         fi
-    else
-        info "SSH hardening skipped."
-        echo ""
     fi
+    echo ""
 
     # ==================== Firewall Configuration ====================
     info "=== Firewall Configuration (UFW) ==="
     echo ""
 
-    local ufw_status=$(check_ufw)
+    local ufw_status
+    ufw_status=$(check_ufw)
     if [[ "$ufw_status" == "UFW_NOT_INSTALLED" ]]; then
-        info "UFW (Uncomplicated Firewall) is not installed."
-        if gum_confirm "Install and configure UFW firewall?" "y"; then
-            echo ""
+        info "UFW is not installed."
+        if prompt_yes_no "Install UFW?" "y"; then
             info "Installing UFW..."
             install_ufw
             success "UFW installed"
-            echo ""
-        else
-            warn "Firewall configuration skipped."
-            echo ""
+            summary+=("UFW installed")
         fi
     else
         echo "Current UFW status:"
         echo "$ufw_status"
-        echo ""
     fi
+    echo ""
 
-    # Check UFW again after potential install
     ufw_status=$(check_ufw)
     if [[ "$ufw_status" != "UFW_NOT_INSTALLED" ]]; then
-        if gum_confirm "Configure UFW firewall rules (SSH, HTTP, HTTPS)?" "y"; then
+        echo "Rules to apply: SSH (${SSH_PORT:-22}), HTTP (80), HTTPS (443) — deny everything else"
+        echo "Rollback: sudo ufw disable"
+        if prompt_yes_no "Configure UFW rules?" "y"; then
+            apply_firewall_rules "${SSH_PORT:-22}"
+            ((changes_made++))
+            summary+=("UFW configured: SSH/HTTP/HTTPS allowed, all else denied")
+            success "Firewall configured"
             echo ""
-            echo "Firewall rules to be applied:"
-            echo "  ✓ Allow SSH (port ${SSH_PORT:-22})"
-            echo "  ✓ Allow HTTP (port 80)"
-            echo "  ✓ Allow HTTPS (port 443)"
-            echo "  ✗ Deny all other incoming traffic"
-            echo ""
-            echo "Rollback: Run 'sudo ufw disable' or 'sudo ufw reset'"
-            echo ""
-
-            if gum_confirm "Proceed with firewall configuration?" "y"; then
-                apply_firewall_rules "${SSH_PORT:-22}"
-                ((changes_made++))
-                success "Firewall configured successfully"
-                echo ""
-                info "Current status:"
-                check_ufw
-                echo ""
-            else
-                info "Firewall configuration skipped."
-                echo ""
-            fi
-        else
-            info "Firewall configuration skipped."
-            echo ""
+            check_ufw
         fi
     fi
+    echo ""
 
     # ==================== Fail2ban Configuration ====================
     info "=== Fail2ban (Intrusion Prevention) ==="
     echo ""
 
-    local fail2ban_status=$(check_fail2ban)
+    local fail2ban_status
+    fail2ban_status=$(check_fail2ban)
     case "$fail2ban_status" in
         "ACTIVE")
-            info "Fail2ban is already installed and active"
-            echo ""
+            success "Fail2ban already installed and active"
             ;;
         "INSTALLED_INACTIVE")
-            warn "Fail2ban is installed but not running"
-            if gum_confirm "Start and enable fail2ban?" "y"; then
+            warn "Fail2ban installed but not running"
+            if prompt_yes_no "Start and enable fail2ban?" "y"; then
                 remote_exec "sudo systemctl start fail2ban && sudo systemctl enable fail2ban"
                 success "Fail2ban started and enabled"
                 ((changes_made++))
+                summary+=("Fail2ban started and enabled")
             fi
-            echo ""
             ;;
         "NOT_INSTALLED")
-            info "Fail2ban is not installed."
-            echo "Fail2ban monitors log files and bans IPs that show malicious signs (e.g., multiple failed SSH attempts)."
-            echo ""
-
-            if gum_confirm "Install and configure fail2ban?" "n"; then
-                echo ""
+            info "Fail2ban not installed."
+            echo "Monitors logs and bans IPs after repeated failed SSH attempts."
+            echo "Config: 5 retries / 10 min window / 1 hour ban"
+            echo "Rollback: sudo systemctl stop fail2ban && sudo systemctl disable fail2ban"
+            if prompt_yes_no "Install and configure fail2ban?" "n"; then
                 info "Installing fail2ban..."
                 install_configure_fail2ban
                 success "Fail2ban installed and configured"
-                echo ""
-                echo "Configuration:"
-                echo "  - Max retry: 5 attempts"
-                echo "  - Find time: 10 minutes"
-                echo "  - Ban time: 1 hour"
-                echo ""
-                echo "Rollback: sudo systemctl stop fail2ban && sudo systemctl disable fail2ban"
-                echo "         Then remove the package using your system's package manager"
-                echo ""
                 ((changes_made++))
-            else
-                info "Fail2ban installation skipped."
-                echo ""
+                summary+=("Fail2ban installed (5 retries / 10 min / 1 hr ban)")
             fi
             ;;
     esac
+    echo ""
 
     # ==================== Summary ====================
-    echo ""
     info "=== Security Hardening Summary ==="
     echo ""
 
-    if [ $changes_made -eq 0 ]; then
-        warn "No security changes were made."
-        info "Server configuration remains unchanged."
+    if [ ${#summary[@]} -eq 0 ]; then
+        warn "No changes made. Server configuration unchanged."
     else
-        success "Security hardening completed!"
-        info "Total changes applied: $changes_made"
+        success "Changes applied: ${#summary[@]}"
+        echo ""
+        for item in "${summary[@]}"; do
+            echo "  ✓ $item"
+        done
         echo ""
 
-        if [ -n "$backup_path" ]; then
-            info "SSH configuration backup: $backup_path"
-        fi
+        [ -n "$backup_path" ] && info "SSH config backup: $backup_path"
 
         echo ""
-        echo "Important reminders:"
-        echo "  - Test your SSH connection before closing this session"
-        echo "  - If you changed the SSH port, update your SSH client config"
-        echo "  - Review firewall rules with: sudo ufw status"
-        echo "  - Check fail2ban status with: sudo fail2ban-client status"
+        echo "Reminders:"
+        echo "  - Test SSH connection before closing this session"
+        echo "  - Review firewall:  sudo ufw status"
+        echo "  - Check fail2ban:   sudo fail2ban-client status"
         echo ""
 
-        # Test SSH connection
         info "Testing SSH connection..."
         if remote_exec "exit" &>/dev/null; then
             success "SSH connection verified"
         else
-            warn "SSH connection test failed!"
-            warn "Please verify your connection settings before disconnecting."
+            warn "SSH connection test failed — verify settings before disconnecting!"
         fi
     fi
 
