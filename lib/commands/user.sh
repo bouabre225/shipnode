@@ -28,7 +28,7 @@ ENDSSH
     fi
 
     # Process each user
-    while IFS='|' read -r username email password sudo authorized_key authorized_key_file authorized_keys; do
+    while IFS='|' read -r username email password sudo authorized_key authorized_key_file authorized_keys <&3; do
         # Validate username
         if ! validate_username "$username"; then
             warn "Invalid username: $username (skipping)"
@@ -132,7 +132,7 @@ ENDSSH
             success "Updated SSH keys for existing user: $username"
         fi
 
-    done <<< "$users_data"
+    done 3<<< "$users_data"
 
     success "User sync complete"
 }
@@ -142,32 +142,33 @@ cmd_user_list() {
 
     info "Listing provisioned users..."
 
-    # Check if users.json exists
-    local has_users=$(remote_exec "[ -f $REMOTE_PATH/.shipnode/users.json ] && echo 'yes' || echo 'no'")
+    local users_file="${REMOTE_PATH}/.shipnode/users.json"
 
-    if [ "$has_users" = "no" ]; then
+    # Check if users.json exists (treat SSH failure same as missing file)
+    local has_users
+    has_users=$(remote_exec "[ -f '${users_file}' ] && echo yes || echo no" 2>/dev/null)
+    if [ "${has_users}" != "yes" ]; then
         warn "No users provisioned yet. Run 'shipnode user sync' first."
         return 0
     fi
 
-    # Fetch and display users
+    # Fetch and display users — escape \$() so subshells run remotely
     remote_exec bash << ENDSSH
         echo ""
         printf "%-15s %-30s %-12s %-8s %s\n" "USERNAME" "EMAIL" "AUTH" "SUDO" "CREATED"
         echo "==================================================================================="
 
-        cat $REMOTE_PATH/.shipnode/users.json | jq -r '.users[] | "\(.username)|\(.email)|\(.auth)|\(.sudo)|\(.created_at)"' | while IFS='|' read -r username email auth sudo created; do
-            # Format created date
-            created_short=$(echo "$created" | cut -d'T' -f1)
+        jq -r '.users[] | "\(.username)|\(.email)|\(.auth)|\(.sudo)|\(.created_at)"' "${users_file}" | \
+        while IFS='|' read -r username email auth sudo created; do
+            created_short=\$(echo "\$created" | cut -d'T' -f1)
             sudo_text="no"
-            [ "$sudo" = "true" ] && sudo_text="yes"
-
-            printf "%-15s %-30s %-12s %-8s %s\n" "$username" "$email" "$auth" "$sudo_text" "$created_short"
+            [ "\$sudo" = "true" ] && sudo_text="yes"
+            printf "%-15s %-30s %-12s %-8s %s\n" "\$username" "\$email" "\$auth" "\$sudo_text" "\$created_short"
         done
 
         echo ""
-        total=$(cat $REMOTE_PATH/.shipnode/users.json | jq '.users | length')
-        echo "Total: $total users"
+        total=\$(jq '.users | length' "${users_file}")
+        echo "Total: \$total users"
 ENDSSH
 }
 

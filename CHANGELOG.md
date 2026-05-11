@@ -5,6 +5,11 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.16] - 2026-05-12
+
+### Fixed
+- **user sync**: Only first user was processed when multiple users defined in users.yml — SSH inside the `while read` loop consumed remaining lines from the here-string. Fixed by redirecting the loop to file descriptor 3 (`<&3` / `3<<< "$users_data"`).
+
 ## [1.4.15] - 2026-05-11
 
 ### Fixed

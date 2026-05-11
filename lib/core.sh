@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # ShipNode version
-VERSION="1.4.15"
+VERSION="1.4.16"
 
 # SSH multiplexing for connection reuse
 SSH_CONTROL_PATH="/tmp/shipnode-ssh-%r@%h:%p"
