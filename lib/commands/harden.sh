@@ -285,25 +285,39 @@ cmd_harden() {
         # Change SSH port
         if prompt_yes_no "Change SSH port from ${current_port:-22}?" "n"; then
             echo ""
-            echo "  1) 2222 (common alternative)"
-            echo "  2) 1022 (registered alternative)"
-            echo "  3) Custom port"
+            local effective_port="${current_port:-22}"
+            local opt_num=1
+            local opt_2222="" opt_1022=""
+
+            if [ "$effective_port" != "2222" ]; then
+                echo "  $opt_num) 2222 (common alternative)"
+                opt_2222="$opt_num"
+                ((opt_num++))
+            fi
+            if [ "$effective_port" != "1022" ]; then
+                echo "  $opt_num) 1022 (registered alternative)"
+                opt_1022="$opt_num"
+                ((opt_num++))
+            fi
+            echo "  $opt_num) Custom port"
+            local opt_custom="$opt_num"
             echo ""
-            read -rp "Select option [1-3]: " port_choice
+            read -rp "Select option [1-$opt_num]: " port_choice
 
             local new_port=""
-            case "$port_choice" in
-                1) new_port="2222" ;;
-                2) new_port="1022" ;;
-                3)
-                    read -rp "Enter port (1024-65535): " new_port
-                    if [[ ! "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1024 ] || [ "$new_port" -gt 65535 ]; then
-                        warn "Invalid port. Skipping."
-                        new_port=""
-                    fi
-                    ;;
-                *) warn "Invalid choice. Skipping port change." ;;
-            esac
+            if [ "$port_choice" = "$opt_2222" ] && [ -n "$opt_2222" ]; then
+                new_port="2222"
+            elif [ "$port_choice" = "$opt_1022" ] && [ -n "$opt_1022" ]; then
+                new_port="1022"
+            elif [ "$port_choice" = "$opt_custom" ]; then
+                read -rp "Enter port (1024-65535): " new_port
+                if [[ ! "$new_port" =~ ^[0-9]+$ ]] || [ "$new_port" -lt 1024 ] || [ "$new_port" -gt 65535 ]; then
+                    warn "Invalid port. Skipping."
+                    new_port=""
+                fi
+            else
+                warn "Invalid choice. Skipping port change."
+            fi
 
             if [ -n "$new_port" ]; then
                 local port_in_use
@@ -321,7 +335,7 @@ cmd_harden() {
                 echo ""
                 if prompt_yes_no "Proceed with port change to $new_port?" "n"; then
                     apply_ssh_config "Port" "$new_port"
-                    SSH_PORT="$new_port"
+                    # SSH_PORT updated after restart — keep old port active for remaining remote_exec calls
                     sed -i "s/^SSH_PORT=.*/SSH_PORT=${new_port}/" shipnode.conf 2>/dev/null || true
                     ((ssh_changes++))
                     summary+=("SSH port changed to $new_port")
@@ -363,6 +377,10 @@ cmd_harden() {
             echo ""
             info "Restarting SSH service..."
             restart_ssh_service
+            # Switch to new port now that sshd is listening on it
+            if [ -n "${new_port:-}" ]; then
+                SSH_PORT="$new_port"
+            fi
             success "SSH service restarted"
             ((changes_made += ssh_changes))
         fi
