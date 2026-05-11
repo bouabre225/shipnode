@@ -5,6 +5,11 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.14] - 2026-05-11
+
+### Fixed
+- **harden**: Open new SSH port in UFW before restarting SSH — previously the port change caused an immediate lockout when UFW was active
+
 ## [1.4.13] - 2026-05-11
 
 ### Fixed

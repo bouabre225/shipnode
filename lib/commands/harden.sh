@@ -351,6 +351,15 @@ cmd_harden() {
         fi
 
         if [ "$ssh_changes" -gt 0 ]; then
+            # If port changed and UFW is active, open new port BEFORE restarting SSH
+            if [ -n "${new_port:-}" ]; then
+                local ufw_check
+                ufw_check=$(remote_exec "command -v ufw &>/dev/null && ufw status 2>/dev/null | grep -c 'Status: active' || echo 0")
+                if [ "${ufw_check:-0}" -gt 0 ]; then
+                    info "Opening port $new_port in UFW before restarting SSH..."
+                    remote_exec "sudo ufw allow ${new_port}/tcp" &>/dev/null || true
+                fi
+            fi
             echo ""
             info "Restarting SSH service..."
             restart_ssh_service
