@@ -141,15 +141,13 @@ gum_confirm() {
 
     # Check if we have a TTY (interactive terminal)
     if [ "$USE_GUM" = true ] && [ -t 0 ]; then
+        local choice
         if [ "$default" = "y" ]; then
-            local choice
-            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "Yes" 2>/dev/null || echo "No")
-            [ "$choice" = "Yes" ] && return 0 || return 1
+            choice=$(gum choose --header "$message" --default "Yes" "Yes" "No" 2>/dev/null || echo "No")
         else
-            local choice
-            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "No" 2>/dev/null || echo "No")
-            [ "$choice" = "Yes" ] && return 0 || return 1
+            choice=$(gum choose --header "$message" --default "No" "Yes" "No" 2>/dev/null || echo "No")
         fi
+        [ "$choice" = "Yes" ] && return 0 || return 1
     else
         # Fallback to existing function
         prompt_yes_no "$message" "$default"

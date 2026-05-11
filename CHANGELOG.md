@@ -5,6 +5,11 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.12] - 2026-05-11
+
+### Fixed
+- **prompts**: Pass `gum choose` options as args instead of piping via stdin — piping consumed TTY and caused all confirmations to auto-skip
+
 ## [1.4.11] - 2026-05-11
 
 ### Fixed
