@@ -5,6 +5,16 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.11] - 2026-05-11
+
+### Fixed
+- **harden**: SSH port change now updates local `shipnode.conf` instead of the remote file, so subsequent commands use the correct port
+- **harden**: Removed `local` keyword inside remote heredoc in `install_configure_fail2ban` (caused `bash: local: can only be used in a function` error)
+- **harden**: Fixed UFW duplicate-rule check regex to correctly match existing port rules
+- **harden**: SSH uncomment `sed` now handles commented keys with a space after `#` (e.g. `# PasswordAuthentication`)
+- **prompts**: Removed `--no-limit` from `gum_confirm` to prevent multi-select on yes/no prompts
+- **prompts**: Removed redundant `2>&1` after `&>/dev/null` in fail2ban status check
+
 ## [1.4.0] - 2026-05-10
 
 ### Added

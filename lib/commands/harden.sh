@@ -51,7 +51,7 @@ apply_ssh_config() {
     local value="$2"
     remote_exec bash << EOF
         # Uncomment if the key is commented out
-        sudo sed -i "s/^#\(${key}[[:space:]]\)/\1/" /etc/ssh/sshd_config
+        sudo sed -i "s/^#[[:space:]]*\(${key}[[:space:]]\)/\1/" /etc/ssh/sshd_config
         # Check if the configuration already exists
         if grep -qE "^${key}[[:space:]]" /etc/ssh/sshd_config; then
             # Update existing line
@@ -140,7 +140,7 @@ apply_firewall_rules() {
         \$SUDO ufw default allow outgoing 2>/dev/null || true
 
         # Allow SSH (only if not already allowed)
-        if ! \$SUDO ufw status | grep -qE "^\[?${ssh_port}\]"; then
+        if ! \$SUDO ufw status | grep -qE "${ssh_port}/tcp"; then
             \$SUDO ufw allow ${ssh_port}/tcp
         fi
 
@@ -161,7 +161,7 @@ EOF
 check_fail2ban() {
     remote_exec bash << 'EOF'
         if command -v fail2ban-server &> /dev/null; then
-            if systemctl is-active fail2ban &> /dev/null 2>&1; then
+            if systemctl is-active fail2ban &>/dev/null; then
                 echo "ACTIVE"
             else
                 echo "INSTALLED_INACTIVE"
@@ -199,7 +199,7 @@ install_configure_fail2ban() {
         fi
 
         # Determine log path based on distro
-        local log_path="/var/log/auth.log"
+        log_path="/var/log/auth.log"
         if [ -f "/var/log/secure" ]; then
             log_path="/var/log/secure"
         fi
@@ -333,7 +333,7 @@ cmd_harden() {
                     apply_ssh_config "Port" "$new_port"
                     SSH_PORT="$new_port"
                     # Persist SSH_PORT to shipnode.conf on the server
-                    remote_exec "sed -i 's/^SSH_PORT=.*/SSH_PORT=${new_port}/' ${REMOTE_PATH}/shipnode.conf" 2>/dev/null || true
+                    sed -i "s/^SSH_PORT=.*/SSH_PORT=${new_port}/" shipnode.conf 2>/dev/null || true
                     ((changes_made++))
                     success "SSH port configured: $new_port"
                     echo ""

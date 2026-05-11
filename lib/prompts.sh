@@ -143,11 +143,11 @@ gum_confirm() {
     if [ "$USE_GUM" = true ] && [ -t 0 ]; then
         if [ "$default" = "y" ]; then
             local choice
-            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "Yes" --no-limit 2>/dev/null || echo "No")
+            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "Yes" 2>/dev/null || echo "No")
             [ "$choice" = "Yes" ] && return 0 || return 1
         else
             local choice
-            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "No" --no-limit 2>/dev/null || echo "No")
+            choice=$(printf 'Yes\nNo' | gum choose --header "$message" --default "No" 2>/dev/null || echo "No")
             [ "$choice" = "Yes" ] && return 0 || return 1
         fi
     else
