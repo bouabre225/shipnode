@@ -28,6 +28,8 @@ Global Options:
     config validate     Validate config without deploying
     metrics             Show real-time PM2 resource metrics (backend)
     env                 Upload .env file to server
+    run <cmd>           Run a command on the server in the app context
+    run --tty <cmd>     Run an interactive shell command (force TTY)
     backup setup        Install/update database backup script and timer
     backup run          Run a database backup now
     backup status       Show database backup timer and recent logs

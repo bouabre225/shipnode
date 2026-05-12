@@ -6,7 +6,7 @@ This document describes the internal architecture and module organization of Shi
 
 ShipNode is organized as a modular bash project to improve maintainability, testability, and collaboration. The codebase is split into focused modules, each with a single responsibility.
 
-**Total: ~8,350 lines** across 26 modules.
+**Total: ~8,489 lines** across 27 modules.
 
 ## Directory Structure
 
@@ -37,6 +37,7 @@ shipnode/
 │       ├── rollback.sh        # Rollback command (86 lines)
 │       ├── migrate.sh         # Migrate command (92 lines)
 │       ├── env.sh             # Environment upload (42 lines)
+│       ├── run.sh             # Run command in app context (139 lines)
 │       ├── eject.sh           # Eject PM2/Caddy templates (266 lines)
 │       ├── metrics.sh         # PM2 resource monitoring (12 lines)
 │       ├── config-cmd.sh      # Config show/validate/path (137 lines)

@@ -553,6 +553,9 @@ shipnode config validate               # Validate config without deploying
 
 # Environment
 shipnode env                           # Upload .env to server
+shipnode run <cmd>                     # Run a command in the app context
+shipnode run --tty <cmd>               # Force interactive TTY session
+shipnode run bash                      # Open interactive shell (auto-detected)
 
 # Diagnostics
 shipnode doctor                        # Pre-flight checks
