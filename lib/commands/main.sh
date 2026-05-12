@@ -133,6 +133,9 @@ main() {
         config)
             cmd_config "${cmd_args[@]}"
             ;;
+        run)
+            cmd_run "${cmd_args[@]}"
+            ;;
         help|--help|-h)
             cmd_help
             ;;
