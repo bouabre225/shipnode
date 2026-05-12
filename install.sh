@@ -9,13 +9,14 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VERSION=$(grep -m1 '^VERSION=' "$SCRIPT_DIR/lib/core.sh" 2>/dev/null | cut -d'"' -f2)
 echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     ShipNode Installer v1.4.10     ║${NC}"
+echo -e "${BLUE}║     ShipNode Installer v${VERSION}     ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
 echo
 
 # Get the directory where this script is located
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 SHIPNODE_BIN="$SCRIPT_DIR/shipnode"
 INSTALL_DIR="$HOME/.shipnode"
 
