@@ -16,13 +16,13 @@ KNOWN_SHELLS="bash sh zsh fish"
 # _run_parse_args "$@"
 #
 # Strips --tty from the argument list and populates:
-#   CMD         — the remote command string (first non-flag argument)
-#   INTERACTIVE — "true" if --tty was present or command is a known shell,
-#                 "false" otherwise
+#   _RUN_CMD         — the remote command string (all non-flag arguments joined)
+#   _RUN_INTERACTIVE — "true" if --tty was present or command is a known shell,
+#                      "false" otherwise
 # ---------------------------------------------------------------------------
 _run_parse_args() {
-    CMD=""
-    INTERACTIVE="false"
+    _RUN_CMD=""
+    _RUN_INTERACTIVE="false"
 
     local tty_flag=false
     local remaining=()
@@ -35,16 +35,16 @@ _run_parse_args() {
         fi
     done
 
-    # First remaining argument is the command
+    # Join all remaining arguments as the command (supports unquoted multi-word forms)
     if [ "${#remaining[@]}" -gt 0 ]; then
-        CMD="${remaining[0]}"
+        _RUN_CMD="${remaining[*]}"
     fi
 
     # Determine interactive mode
     if [ "$tty_flag" = true ]; then
-        INTERACTIVE="true"
-    elif [ -n "$CMD" ] && _run_is_interactive "$CMD"; then
-        INTERACTIVE="true"
+        _RUN_INTERACTIVE="true"
+    elif [ -n "$_RUN_CMD" ] && _run_is_interactive "$_RUN_CMD"; then
+        _RUN_INTERACTIVE="true"
     fi
 }
 
@@ -73,15 +73,15 @@ _run_is_interactive() {
 # Outputs the full remote command string:
 #   cd "$REMOTE_PATH/current" &&
 #   { [ -f "$REMOTE_PATH/shared/.env" ] && source "$REMOTE_PATH/shared/.env" ||
-#     echo "⚠ shared/.env introuvable..." >&2; } &&
+#     echo "Warning: ..." >&2; } &&
 #   <cmd>
 # ---------------------------------------------------------------------------
 _run_build_remote_cmd() {
     local cmd="$1"
     printf '%s' \
-        "cd $REMOTE_PATH/current && " \
-        "{ [ -f $REMOTE_PATH/shared/.env ] && source $REMOTE_PATH/shared/.env || " \
-        "echo \"⚠ shared/.env introuvable. Exécutez 'shipnode env' pour envoyer votre fichier d'environnement.\" >&2; } && " \
+        "cd \"$REMOTE_PATH/current\" && " \
+        "{ [ -f \"$REMOTE_PATH/shared/.env\" ] && source \"$REMOTE_PATH/shared/.env\" || " \
+        "echo \"Warning: shared/.env not found. Run 'shipnode env' to upload your environment file.\" >&2; } && " \
         "$cmd"
 }
 
@@ -104,11 +104,6 @@ _run_exec() {
     ssh_cmd -p "$SSH_PORT" $tty_flag "$SSH_USER@$SSH_HOST" "$remote_cmd"
     local exit_code=$?
 
-    # Normalise negative exit codes (undefined behaviour in Bash)
-    if [ "$exit_code" -lt 0 ] 2>/dev/null; then
-        exit_code=1
-    fi
-
     # Warn on SSH connection failure (exit 255)
     if [ "$exit_code" -eq 255 ]; then
         warn "SSH connection failed (user=$SSH_USER host=$SSH_HOST port=$SSH_PORT). Try manually: ssh -p $SSH_PORT $SSH_USER@$SSH_HOST"
@@ -128,12 +123,12 @@ cmd_run() {
     _run_parse_args "$@"
 
     # Guard: no command provided
-    if [ -z "$CMD" ]; then
+    if [ -z "$_RUN_CMD" ]; then
         error "Usage: shipnode run [--tty] \"<command>\"\n  Example: shipnode run \"npm run migrate\"\n  Example: shipnode run bash"
     fi
 
     local remote_cmd
-    remote_cmd="$(_run_build_remote_cmd "$CMD")"
+    remote_cmd="$(_run_build_remote_cmd "$_RUN_CMD")"
 
-    _run_exec "$INTERACTIVE" "$remote_cmd"
+    _run_exec "$_RUN_INTERACTIVE" "$remote_cmd"
 }
