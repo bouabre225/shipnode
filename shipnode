@@ -43,6 +43,7 @@ source "$LIB_DIR/commands/metrics.sh"
 source "$LIB_DIR/commands/config-cmd.sh"
 source "$LIB_DIR/commands/ci.sh"
 source "$LIB_DIR/commands/harden.sh"
+source "$LIB_DIR/commands/run.sh"
 source "$LIB_DIR/commands/help.sh"
 
 # Source and run main entry point

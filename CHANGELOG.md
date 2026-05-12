@@ -5,6 +5,14 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`shipnode run <cmd>`**: Execute a one-off command on the production server in the application context (`$REMOTE_PATH/current/` + `shared/.env` sourced)
+- **`shipnode run bash`**: Open an interactive shell in the application context (TTY auto-detected for known shells: bash, sh, zsh, fish)
+- **`shipnode run --tty <cmd>`**: Force TTY allocation for any command
+- Exit codes from the remote command are propagated exactly; negative codes are normalized to 1
+
 ## [1.4.16] - 2026-05-12
 
 ### Fixed
