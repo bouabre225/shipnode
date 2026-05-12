@@ -83,14 +83,15 @@ Modules are loaded in a specific order to ensure dependencies are available:
 20. **commands/rollback.sh** - Depends on core.sh, release.sh
 21. **commands/migrate.sh** - Depends on core.sh, release.sh
 22. **commands/env.sh** - Depends on core.sh
-23. **commands/eject.sh** - Depends on core.sh
-24. **commands/metrics.sh** - Depends on core.sh
-25. **commands/config-cmd.sh** - Depends on core.sh
-26. **commands/upgrade.sh** - Depends on core.sh
-27. **commands/ci.sh** - Depends on core.sh
-28. **commands/harden.sh** - Depends on core.sh
-29. **commands/help.sh** - Depends on core.sh
-30. **commands/main.sh** - Depends on all other modules
+23. **commands/run.sh** — Depends on core.sh
+24. **commands/eject.sh** - Depends on core.sh
+25. **commands/metrics.sh** - Depends on core.sh
+26. **commands/config-cmd.sh** - Depends on core.sh
+27. **commands/upgrade.sh** - Depends on core.sh
+28. **commands/ci.sh** - Depends on core.sh
+29. **commands/harden.sh** - Depends on core.sh
+30. **commands/help.sh** - Depends on core.sh
+31. **commands/main.sh** - Depends on all other modules
 
 ## Module Descriptions
 
@@ -330,6 +331,17 @@ Modules are loaded in a specific order to ensure dependencies are available:
 
 **Key Functions:**
 - `cmd_env()` - Upload .env file to server
+
+#### commands/run.sh (139 lines)
+
+**Purpose:** Execute a one-off command on the production server in the application context
+
+**Key Functions:**
+- `cmd_run()` - Main entry point; loads config, parses args, builds and executes remote command
+- `_run_parse_args()` - Strips `--tty` from arguments and populates `CMD` and `INTERACTIVE`
+- `_run_is_interactive()` - Returns true if the basename of the command matches a known shell (`bash`, `sh`, `zsh`, `fish`)
+- `_run_build_remote_cmd()` - Constructs the full remote command string with context preamble (`cd $REMOTE_PATH/current` + `source $REMOTE_PATH/shared/.env`)
+- `_run_exec()` - Calls `ssh_cmd` with the correct TTY flag (`-t` or `-T`) and propagates the exit code exactly
 
 #### commands/ci.sh (362 lines)
 
