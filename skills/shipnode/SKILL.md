@@ -25,7 +25,7 @@ Load only what is needed:
 
 - `references/deployment-workflows.md` for first deploys, backend/frontend setup, config examples, and expected deploy flow.
 - `references/troubleshooting.md` for SSH, build, sync, PM2, Caddy, health check, port, lock, and env issues.
-- `references/operations.md` for rollback, status/logs/metrics, `.env`, CI/CD, multi-environment profiles, and security hardening.
+- `references/operations.md` for rollback, status/logs/metrics, `.env`, one-off remote commands with `shipnode run`, CI/CD, multi-environment profiles, and security hardening.
 - `references/contributor-notes.md` only when the user is modifying ShipNode itself rather than deploying an app.
 
 ## Deployment Guidance
@@ -38,7 +38,7 @@ Give concrete commands and config snippets tailored to the user's app. Prefer a 
 4. Run `shipnode setup` once per server.
 5. Upload `.env` with `shipnode env` when secrets are needed.
 6. Deploy with `shipnode deploy`.
-7. Verify with `shipnode status`, `shipnode logs`, domain/IP checks, and app-specific smoke tests.
+7. Verify with `shipnode status`, `shipnode logs`, `shipnode run "<command>"`, domain/IP checks, and app-specific smoke tests.
 8. Use `shipnode rollback` when production is unhealthy after a deploy.
 
 ## Safety Rules

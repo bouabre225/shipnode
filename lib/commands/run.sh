@@ -13,6 +13,32 @@
 KNOWN_SHELLS="bash sh zsh fish"
 
 # ---------------------------------------------------------------------------
+# _run_shell_quote <value>
+#
+# Quote a value for safe inclusion in a remote bash command.
+# ---------------------------------------------------------------------------
+_run_shell_quote() {
+    local value="$1"
+    printf '%q' "$value"
+}
+
+# ---------------------------------------------------------------------------
+# _run_build_bin_repair_cmd
+#
+# Outputs a remote command that repairs execute bits only for binaries declared
+# by installed packages. This avoids broad chmod over every file named bin/*.
+# ---------------------------------------------------------------------------
+_run_build_bin_repair_cmd() {
+    printf '%s' \
+        "if [ -d node_modules ]; then " \
+        "find node_modules/.bin -mindepth 1 -maxdepth 1 \\( -type f -o -type l \\) -exec sh -c 'for bin do target=\$(readlink -f \"\$bin\" 2>/dev/null || printf \"%s\" \"\$bin\"); chmod +x \"\$target\" \"\$bin\" 2>/dev/null || true; done' sh {} + 2>/dev/null || true; " \
+        "if command -v node >/dev/null 2>&1; then " \
+        "node -e 'const fs=require(\"fs\"),path=require(\"path\");const root=\"node_modules\";function pkgs(){let out=[];for(const n of fs.readdirSync(root)){if(n===\".bin\")continue;const p=path.join(root,n);let s;try{s=fs.statSync(p)}catch{continue}if(!s.isDirectory())continue;if(n.startsWith(\"@\")){for(const c of fs.readdirSync(p)){const cp=path.join(p,c);try{if(fs.statSync(cp).isDirectory())out.push(cp)}catch{}}}else out.push(p)}return out}for(const p of pkgs()){let j;try{j=JSON.parse(fs.readFileSync(path.join(p,\"package.json\"),\"utf8\"))}catch{continue}const bins=typeof j.bin===\"string\"?[j.bin]:j.bin&&typeof j.bin===\"object\"?Object.values(j.bin):[];for(const b of bins){if(typeof b!==\"string\")continue;const f=path.resolve(p,b);if(!f.startsWith(path.resolve(root)+path.sep))continue;try{fs.chmodSync(f,0o755)}catch{}}}' 2>/dev/null || true; " \
+        "fi; " \
+        "fi"
+}
+
+# ---------------------------------------------------------------------------
 # _run_parse_args "$@"
 #
 # Strips --tty from the argument list and populates:
@@ -71,18 +97,33 @@ _run_is_interactive() {
 # _run_build_remote_cmd <cmd>
 #
 # Outputs the full remote command string:
+#   export PATH=... &&
 #   cd "$REMOTE_PATH/current" &&
-#   { [ -f "$REMOTE_PATH/shared/.env" ] && source "$REMOTE_PATH/shared/.env" ||
-#     echo "Warning: ..." >&2; } &&
-#   <cmd>
+#   source "$REMOTE_PATH/shared/.env" when present &&
+#   repair package binary execute bits &&
+#   mise exec "node@$NODE_VERSION" -- bash -lc <cmd>
 # ---------------------------------------------------------------------------
 _run_build_remote_cmd() {
     local cmd="$1"
+    local node_version="${NODE_VERSION:-24}"
+    [ "$node_version" = "lts" ] && node_version="24"
+    local quoted_cmd
+    quoted_cmd="$(_run_shell_quote "$cmd")"
+
     printf '%s' \
+        "set -e; " \
+        "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\"; " \
         "cd \"$REMOTE_PATH/current\" && " \
         "{ [ -f \"$REMOTE_PATH/shared/.env\" ] && source \"$REMOTE_PATH/shared/.env\" || " \
         "echo \"Warning: shared/.env not found. Run 'shipnode env' to upload your environment file.\" >&2; } && " \
-        "$cmd"
+        "$(_run_build_bin_repair_cmd); " \
+        "MISE_BIN=\"\$(command -v mise 2>/dev/null || true)\"; " \
+        "[ -z \"\$MISE_BIN\" ] && [ -x \"\$HOME/.local/bin/mise\" ] && MISE_BIN=\"\$HOME/.local/bin/mise\"; " \
+        "if [ -n \"\$MISE_BIN\" ]; then " \
+        "\"\$MISE_BIN\" exec \"node@$node_version\" -- bash -lc $quoted_cmd; " \
+        "else " \
+        "bash -lc $quoted_cmd; " \
+        "fi"
 }
 
 # ---------------------------------------------------------------------------
@@ -124,7 +165,7 @@ cmd_run() {
 
     # Guard: no command provided
     if [ -z "$_RUN_CMD" ]; then
-        error "Usage: shipnode run [--tty] \"<command>\"\n  Example: shipnode run \"npm run migrate\"\n  Example: shipnode run bash"
+        error "Usage: shipnode run [--tty] \"<command>\" [--config <file>|--profile <name>]\n  Example: shipnode run \"npm run migrate\"\n  Example: shipnode run bash\n  Example: shipnode run \"node -v\" --profile staging"
     fi
 
     local remote_cmd

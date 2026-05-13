@@ -556,6 +556,8 @@ shipnode env                           # Upload .env to server
 shipnode run <cmd>                     # Run a command in the app context
 shipnode run --tty <cmd>               # Force interactive TTY session
 shipnode run bash                      # Open interactive shell (auto-detected)
+shipnode run "node -v" --profile staging       # Use profile config/runtime
+shipnode run "npm run migrate" --config shipnode.prod.conf
 
 # Diagnostics
 shipnode doctor                        # Pre-flight checks
@@ -577,6 +579,8 @@ shipnode mkpasswd                      # Generate password hash
 shipnode deploy --config shipnode.staging.conf   # Custom config
 shipnode deploy --profile staging                # Shorthand: shipnode.staging.conf
 ```
+
+`shipnode run` executes inside `$REMOTE_PATH/current`, sources `$REMOTE_PATH/shared/.env`, and uses the Node.js runtime from `NODE_VERSION`. It also repairs execute permissions for package-declared binaries in `node_modules` before running the command, which prevents common `Permission denied` failures from package CLIs like Prisma, Vite, Next, tsx, or esbuild.
 
 ### Configuration Reference
 

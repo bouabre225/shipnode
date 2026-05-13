@@ -30,6 +30,8 @@ Global Options:
     env                 Upload .env file to server
     run <cmd>           Run a command on the server in the app context
     run --tty <cmd>     Run an interactive shell command (force TTY)
+    run <cmd> --profile <env>  Run using shipnode.<env>.conf
+    run <cmd> --config <path>  Run using a custom config file
     backup setup        Install/update database backup script and timer
     backup run          Run a database backup now
     backup status       Show database backup timer and recent logs
@@ -111,6 +113,8 @@ Examples:
     shipnode deploy --config custom.conf  # Deploy using custom config file
     shipnode --profile prod deploy     # Alternative flag position
     shipnode env                       # Upload .env file to server
+    shipnode run "node -v" --profile staging  # Run with staging config/runtime
+    shipnode run "npm run migrate" --config shipnode.prod.conf  # Run with custom config
     shipnode backup setup              # Configure scheduled database backups
     shipnode backup run                # Run a database backup now
     shipnode backup status             # Show backup timer and logs

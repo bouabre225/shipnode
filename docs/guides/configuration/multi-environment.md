@@ -21,6 +21,14 @@ shipnode deploy --profile dev      # uses shipnode.dev.conf
 shipnode deploy --config my.conf   # uses custom config file
 ```
 
+Run one-off commands against an environment:
+
+```bash
+shipnode run "node -v" --profile staging
+shipnode run "npm run db:seed" --config shipnode.production.conf
+shipnode run bash --tty --profile dev
+```
+
 ## Profile Shorthand
 
 `--profile staging` is shorthand for `--config shipnode.staging.conf`.

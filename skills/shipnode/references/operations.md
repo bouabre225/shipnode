@@ -64,6 +64,33 @@ scp .env root@your-server:/var/www/myapp/shared/.env
 
 Pre/post deploy hooks can use `$SHARED_ENV_PATH`.
 
+## One-Off Remote Commands
+
+Run commands on the server in the deployed app context:
+
+```bash
+shipnode run "npm run db:seed"
+shipnode run "npx prisma migrate deploy"
+shipnode run "node -v"
+```
+
+Interactive commands can request a TTY:
+
+```bash
+shipnode run bash --tty
+```
+
+`shipnode run` loads `shipnode.conf`, enters `$REMOTE_PATH/current`, sources `$REMOTE_PATH/shared/.env` when present, and executes the command with the configured project Node.js runtime (`NODE_VERSION`) via mise when available.
+
+Profiles and custom config files work with `run` too:
+
+```bash
+shipnode run "node -v" --profile staging
+shipnode run "npm run db:seed" --config shipnode.production.conf
+```
+
+Before executing the user command, ShipNode repairs execute permissions only for package-declared binaries in `node_modules` (`node_modules/.bin` targets and `package.json` `bin` entries). This prevents `Permission denied` errors from broken package binary permissions without broadly chmodding the app tree.
+
 ## Multi-Environment Profiles
 
 Use separate configs:

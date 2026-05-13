@@ -164,6 +164,9 @@ shipnode doctor
 shipnode deploy --dry-run
 shipnode deploy --skip-build
 shipnode deploy --profile staging
+shipnode run "node -v"
+shipnode run "npm run db:seed" --profile staging
+shipnode run bash --tty
 shipnode logs
 shipnode status
 ```

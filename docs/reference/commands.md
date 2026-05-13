@@ -59,6 +59,12 @@ All ShipNode commands with descriptions.
 | `shipnode env` | Upload .env to server |
 | `shipnode env pull` | Download .env from server |
 | `shipnode env list` | List environment variables |
+| `shipnode run "<cmd>"` | Run a command on the server in the app context using the configured Node.js runtime |
+| `shipnode run "<cmd>" --tty` | Force an interactive TTY session |
+| `shipnode run "<cmd>" --profile <name>` | Run using `shipnode.<name>.conf` |
+| `shipnode run "<cmd>" --config <file>` | Run using a specific config file |
+
+`shipnode run` executes inside `$REMOTE_PATH/current`, sources `$REMOTE_PATH/shared/.env` when present, and uses the project runtime from `NODE_VERSION` through mise when available. Before executing the command, ShipNode repairs execute bits only for package-declared binaries in `node_modules` (`node_modules/.bin` targets and `package.json` `bin` entries), avoiding common package CLI `Permission denied` errors without chmodding the whole app tree.
 
 ## Backup Commands
 
