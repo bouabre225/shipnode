@@ -8,28 +8,30 @@ Automate deployments with GitHub Actions.
 shipnode ci github
 ```
 
-This creates `.github/workflows/deploy.yml`:
+This creates `.github/workflows/shipnode-deploy.yml`:
 
 ```yaml
-name: Deploy
+name: Deploy with ShipNode
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup ShipNode
-        uses: devalade/shipnode-action@latest
-        
+      - uses: actions/setup-node@v4
+      - run: npm ci
+      - run: curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
       - name: Deploy
-        run: shipnode deploy
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SHIPNODE_SSH_KEY }}
+        run: shipnode --config shipnode.ci.conf deploy
 ```
 
 ## Setup Secrets
@@ -38,9 +40,11 @@ Add these secrets to your GitHub repository:
 
 | Secret | Description |
 |--------|-------------|
-| `SSH_PRIVATE_KEY` | Private key for SSH access |
-| `SSH_HOST` | Server hostname/IP |
-| `SSH_USER` | SSH username |
+| `SHIPNODE_SSH_KEY` | Private key for SSH access |
+| `SHIPNODE_SSH_HOST` | Server hostname/IP |
+| `SHIPNODE_SSH_USER` | SSH username |
+| `SHIPNODE_SSH_PORT` | SSH port, usually `22` |
+| `SHIPNODE_KNOWN_HOSTS` | Output of `ssh-keyscan -H your-host` (recommended) |
 
 ### Add Secret via CLI
 
@@ -81,12 +85,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: devalade/shipnode-action@latest
-      - run: shipnode deploy --profile production
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
+      - run: curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+      - run: shipnode --config shipnode.ci.conf deploy
 ```
 
 ## Multi-Environment
@@ -106,20 +106,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: devalade/shipnode-action@latest
-      - run: shipnode deploy --profile staging
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_STAGING_KEY }}
+      - run: curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+      - run: shipnode --config shipnode.staging.conf deploy
 
   deploy-production:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: devalade/shipnode-action@latest
-      - run: shipnode deploy --profile production
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PROD_KEY }}
+      - run: curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+      - run: shipnode --config shipnode.production.conf deploy
 ```
 
 ## Sync All Config
@@ -131,8 +127,8 @@ shipnode ci env-sync --all
 ```
 
 This syncs:
-- `shipnode.conf` → GitHub secrets
-- `.env` → `SHIPNODE_ENV_FILE` (base64 encoded)
+- SSH connection values from `shipnode.conf` → GitHub secrets
+- `.env` values → GitHub secrets
 
 ## Manual Deployment
 

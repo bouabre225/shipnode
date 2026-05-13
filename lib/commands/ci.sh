@@ -111,24 +111,29 @@ cmd_ci_github() {
         pkg_manager="bun"
     fi
 
-    # Generate cache and install commands based on package manager
+    # Generate setup, cache, and install commands based on package manager
     local cache_cmd=""
     local install_cmd=""
+    local runtime_setup_cmd=""
     case "$pkg_manager" in
         pnpm)
             cache_cmd="cache: 'pnpm'"
+            runtime_setup_cmd="corepack enable"
             install_cmd="pnpm install --frozen-lockfile"
             ;;
         yarn)
             cache_cmd="cache: 'yarn'"
+            runtime_setup_cmd="corepack enable"
             install_cmd="yarn install --frozen-lockfile"
             ;;
         bun)
             cache_cmd=""
+            runtime_setup_cmd="curl -fsSL https://bun.sh/install | bash && echo \"\$HOME/.bun/bin\" >> \"\$GITHUB_PATH\""
             install_cmd="bun install"
             ;;
         *)
             cache_cmd="cache: 'npm'"
+            runtime_setup_cmd=":"
             install_cmd="npm ci"
             ;;
     esac
@@ -142,9 +147,18 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: shipnode-deploy-\${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
 
     steps:
       - name: Checkout code
@@ -156,35 +170,59 @@ jobs:
           node-version: '20'
           ${cache_cmd}
 
+      - name: Setup package manager
+        run: |
+          ${runtime_setup_cmd}
+
       - name: Install dependencies
         run: ${install_cmd}
 
       - name: Build application
-        run: ${pkg_manager} run build
-        # Remove this step if your app doesn't have a build script
+        run: |
+          if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
+            ${pkg_manager} run build
+          else
+            echo "No build script found; skipping"
+          fi
 
       - name: Install ShipNode
         run: |
-          curl -fsSL https://shipnode.dev/install.sh | bash
+          curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
-          ssh-private-key: \\\${{ secrets.SHIPNODE_SSH_KEY }}
+          ssh-private-key: \${{ secrets.SHIPNODE_SSH_KEY }}
           log-public-key: false
 
       - name: Add host to known hosts
+        env:
+          SHIPNODE_KNOWN_HOSTS: \${{ secrets.SHIPNODE_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.ssh
-          ssh-keyscan -p \\\${{ secrets.SHIPNODE_SSH_PORT }} \\\${{ secrets.SHIPNODE_SSH_HOST }} >> ~/.ssh/known_hosts
+          chmod 700 ~/.ssh
+          if [ -n "\$SHIPNODE_KNOWN_HOSTS" ]; then
+            printf '%s\n' "\$SHIPNODE_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H -p \${{ secrets.SHIPNODE_SSH_PORT || '22' }} \${{ secrets.SHIPNODE_SSH_HOST }} >> ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Create CI config from secrets
+        run: |
+          set -euo pipefail
+          cp shipnode.conf shipnode.ci.conf
+          sed -i "s|^SSH_HOST=.*|SSH_HOST=\${{ secrets.SHIPNODE_SSH_HOST }}|" shipnode.ci.conf
+          sed -i "s|^SSH_USER=.*|SSH_USER=\${{ secrets.SHIPNODE_SSH_USER }}|" shipnode.ci.conf
+          sed -i "s|^SSH_PORT=.*|SSH_PORT=\${{ secrets.SHIPNODE_SSH_PORT || '22' }}|" shipnode.ci.conf
+
+      - name: Preflight checks
+        run: shipnode --config shipnode.ci.conf doctor
 
       - name: Deploy with ShipNode
-        env:
-          SHIPNODE_SSH_HOST: \\\${{ secrets.SHIPNODE_SSH_HOST }}
-          SHIPNODE_SSH_USER: \\\${{ secrets.SHIPNODE_SSH_USER }}
-          SHIPNODE_SSH_PORT: \\\${{ secrets.SHIPNODE_SSH_PORT }}
         run: |
-          shipnode deploy
+          shipnode --config shipnode.ci.conf deploy
 EOF
 
     success "Created GitHub Actions workflow: $workflow_path"
@@ -195,6 +233,7 @@ EOF
     echo "  SHIPNODE_SSH_HOST     - Server hostname or IP address"
     echo "  SHIPNODE_SSH_USER     - SSH username"
     echo "  SHIPNODE_SSH_PORT     - SSH port (usually 22)"
+    echo "  SHIPNODE_KNOWN_HOSTS  - Output of ssh-keyscan -H your-host (recommended)"
     echo
     info "Add these secrets in your repository settings:"
     echo "  Settings > Secrets and variables > Actions > Repository secrets"

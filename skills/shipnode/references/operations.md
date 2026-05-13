@@ -120,19 +120,17 @@ shipnode ci github
 
 Use repository secrets for SSH:
 
-- `SSH_PRIVATE_KEY`
-- `SSH_HOST`
-- `SSH_USER`
+- `SHIPNODE_SSH_KEY`
+- `SHIPNODE_SSH_HOST`
+- `SHIPNODE_SSH_USER`
+- `SHIPNODE_SSH_PORT`
+- `SHIPNODE_KNOWN_HOSTS` (recommended)
 
 Typical deploy step:
 
 ```yaml
-- uses: devalade/shipnode-action@latest
-- run: shipnode deploy --profile production
-  env:
-    SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-    SSH_HOST: ${{ secrets.SSH_HOST }}
-    SSH_USER: ${{ secrets.SSH_USER }}
+- run: curl -fsSL https://github.com/devalade/shipnode/releases/latest/download/shipnode-installer.sh | bash
+- run: shipnode --config shipnode.ci.conf deploy
 ```
 
 Sync config/secrets when appropriate:

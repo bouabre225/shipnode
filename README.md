@@ -503,8 +503,11 @@ Non-destructive check of: SSH config, firewall status, fail2ban, file permission
 # Generate workflow file
 shipnode ci github
 
-# Sync secrets (SSH_HOST, SSH_USER, SSH_PORT, SSH_PRIVATE_KEY)
+# Sync secrets (SHIPNODE_SSH_HOST, SHIPNODE_SSH_USER, SHIPNODE_SSH_PORT)
 shipnode ci env-sync --all
+
+# Set the deploy SSH key separately
+gh secret set SHIPNODE_SSH_KEY < ~/.ssh/id_ed25519
 
 # Push and you're done
 git add .github/workflows/deploy.yml
