@@ -57,6 +57,7 @@ cmd_setup() {
 
         echo "Installing Node.js $NODE_VERSION for this deployment user..."
         mise install -y "node@$NODE_VERSION"
+        mise use -g -y "node@$NODE_VERSION"
 
         if ! mise exec "node@$NODE_VERSION" -- npm --version >/dev/null 2>&1; then
             echo "Error: npm is required but was not installed"

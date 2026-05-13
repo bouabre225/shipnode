@@ -120,6 +120,8 @@ _run_build_remote_cmd() {
         "MISE_BIN=\"\$(command -v mise 2>/dev/null || true)\"; " \
         "[ -z \"\$MISE_BIN\" ] && [ -x \"\$HOME/.local/bin/mise\" ] && MISE_BIN=\"\$HOME/.local/bin/mise\"; " \
         "if [ -n \"\$MISE_BIN\" ]; then " \
+        "\"\$MISE_BIN\" install -y \"node@$node_version\" >/dev/null; " \
+        "\"\$MISE_BIN\" use -g -y \"node@$node_version\" >/dev/null; " \
         "\"\$MISE_BIN\" exec \"node@$node_version\" -- bash -lc $quoted_cmd; " \
         "else " \
         "bash -lc $quoted_cmd; " \
