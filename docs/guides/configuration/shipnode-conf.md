@@ -25,6 +25,29 @@ REMOTE_PATH=/var/www/myapp
 DOMAIN=myapp.com
 ```
 
+### Cloudflare Easy Mode
+
+```bash
+APP_TYPE=backend
+DOMAIN=app.example.com
+
+SSH_USER=deploy
+SSH_HOST=ssh.example.com
+SSH_PORT=22
+SSH_PROXY_MODE=cloudflare
+
+REMOTE_PATH=/var/www/myapp
+PM2_APP_NAME=myapp
+BACKEND_PORT=3000
+
+CLOUDFLARE_ENABLED=true
+CLOUDFLARE_ZONE=example.com
+CLOUDFLARE_LOCKDOWN_FIREWALL=true
+CLOUDFLARE_ACCESS_EMAILS=you@example.com
+```
+
+Keep `CLOUDFLARE_API_TOKEN` and any temporary bootstrap origin host in your shell or CI secrets, not in `shipnode.conf`.
+
 ## All Options
 
 ### Required
@@ -56,6 +79,20 @@ DOMAIN=myapp.com
 |----------|-------------|---------|
 | `SSH_PORT` | SSH port | `22` |
 | `SSH_KEY` | Path to SSH private key | `~/.ssh/id_rsa` |
+| `SSH_PROXY_MODE` | `direct` or `cloudflare` | `direct` |
+| `SSH_PROXY_COMMAND` | Proxy command for Cloudflare SSH | `cloudflared access ssh --hostname %h` |
+
+### Cloudflare Easy Mode
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CLOUDFLARE_ENABLED` | Enable Cloudflare setup commands | `false` |
+| `CLOUDFLARE_ZONE` | Cloudflare zone, such as `example.com` | - |
+| `CLOUDFLARE_APP_HOSTNAME` | Public app hostname | `DOMAIN` |
+| `CLOUDFLARE_SSH_HOSTNAME` | Cloudflare SSH hostname | `SSH_HOST` |
+| `CLOUDFLARE_TUNNEL_NAME` | Tunnel name to create or reuse | app directory name |
+| `CLOUDFLARE_LOCKDOWN_FIREWALL` | Block direct inbound `22`, `80`, and `443` with UFW | `false` |
+| `CLOUDFLARE_ACCESS_EMAILS` | Optional comma-separated Cloudflare Access allow-list | - |
 
 ### Node.js Options
 

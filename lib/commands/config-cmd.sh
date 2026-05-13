@@ -45,6 +45,17 @@ cmd_config_show() {
         echo "  Domain:       $DOMAIN"
     fi
 
+    if [ "${SSH_PROXY_MODE:-direct}" = "cloudflare" ] || [ "${CLOUDFLARE_ENABLED:-false}" = "true" ]; then
+        echo ""
+        echo "  Cloudflare:"
+        echo "    Enabled:    ${CLOUDFLARE_ENABLED:-false}"
+        echo "    Zone:       ${CLOUDFLARE_ZONE:-}"
+        echo "    App Host:   ${CLOUDFLARE_APP_HOSTNAME:-${DOMAIN:-}}"
+        echo "    SSH Host:   ${CLOUDFLARE_SSH_HOSTNAME:-${SSH_HOST:-}}"
+        echo "    SSH Proxy:  ${SSH_PROXY_MODE:-direct}"
+        echo "    Lockdown:   ${CLOUDFLARE_LOCKDOWN_FIREWALL:-false}"
+    fi
+
     echo ""
     echo "  Zero Downtime:  ${ZERO_DOWNTIME}"
     echo "  Keep Releases:  ${KEEP_RELEASES}"
@@ -128,6 +139,23 @@ cmd_config_validate() {
     done
 
     local app_type=$(grep "^APP_TYPE=" "$SHIPNODE_CONFIG_FILE" 2>/dev/null | cut -d= -f2)
+    local ssh_proxy_mode
+    ssh_proxy_mode=$(grep "^SSH_PROXY_MODE=" "$SHIPNODE_CONFIG_FILE" 2>/dev/null | cut -d= -f2)
+    ssh_proxy_mode="${ssh_proxy_mode:-direct}"
+    if [ "$ssh_proxy_mode" != "direct" ] && [ "$ssh_proxy_mode" != "cloudflare" ]; then
+        warn "  Invalid: SSH_PROXY_MODE must be 'direct' or 'cloudflare' (got: '$ssh_proxy_mode')"
+        errors=$((errors + 1))
+    elif [ "$ssh_proxy_mode" = "cloudflare" ]; then
+        local ssh_host
+        ssh_host=$(grep "^SSH_HOST=" "$SHIPNODE_CONFIG_FILE" 2>/dev/null | cut -d= -f2)
+        if is_raw_ip_address "$ssh_host"; then
+            warn "  Invalid: SSH_HOST must be a hostname when SSH_PROXY_MODE=cloudflare"
+            errors=$((errors + 1))
+        else
+            success "  SSH_PROXY_MODE=cloudflare"
+        fi
+    fi
+
     if [ "$app_type" = "backend" ]; then
         for var in PM2_APP_NAME BACKEND_PORT; do
             if ! grep -q "^${var}=" "$SHIPNODE_CONFIG_FILE" 2>/dev/null; then

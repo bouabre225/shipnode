@@ -21,6 +21,9 @@ Global Options:
     doctor              Run pre-flight diagnostic checks
     doctor --security   Run non-destructive security audit
     harden              Interactive server security hardening wizard
+    cloudflare init     Configure Cloudflare Tunnel, DNS, Access SSH, and origin lockdown
+    cloudflare audit    Verify Cloudflare origin privacy settings
+    cloudflare status   Show Cloudflare-related local and remote status
     eject               Eject PM2/Caddy templates for customization
     eject pm2           Eject only PM2 ecosystem config template
     eject caddy         Eject only Caddy config template
@@ -89,6 +92,12 @@ Shared Resources:
     SHARED_DIRS="public/uploads storage"   Persistent directories symlinked into each release
     SHARED_FILES=".env.local"              Persistent files symlinked when present in shared/
 
+Cloudflare Easy Mode:
+    SSH_PROXY_MODE=cloudflare              Connect SSH through Cloudflare Access
+    CLOUDFLARE_ENABLED=true                Enable Cloudflare setup commands
+    CLOUDFLARE_ZONE=example.com            Cloudflare DNS zone
+    CLOUDFLARE_LOCKDOWN_FIREWALL=true      Block direct inbound 22/80/443 after setup
+
 User Provisioning:
     Create users.yml with user definitions, then run 'shipnode user sync'.
     Generate password hashes with 'shipnode mkpasswd'.
@@ -112,6 +121,9 @@ Examples:
     shipnode doctor                    # Run diagnostics
     shipnode doctor --security         # Run security audit
     shipnode harden                    # Interactive security hardening
+    shipnode cloudflare init           # Configure Cloudflare Tunnel + Access SSH
+    shipnode cloudflare audit          # Check origin privacy
+    shipnode cloudflare status         # Show Cloudflare tunnel status
     shipnode deploy                    # Deploy your app
     shipnode deploy --profile staging  # Deploy using shipnode.staging.conf
     shipnode deploy --config custom.conf  # Deploy using custom config file

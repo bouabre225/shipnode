@@ -25,6 +25,29 @@ REMOTE_PATH=/var/www/myapp
 DOMAIN=myapp.com
 ```
 
+### Cloudflare Easy Mode
+
+```bash
+APP_TYPE=backend
+DOMAIN=app.example.com
+
+SSH_USER=deploy
+SSH_HOST=ssh.example.com
+SSH_PORT=22
+SSH_PROXY_MODE=cloudflare
+
+REMOTE_PATH=/var/www/myapp
+PM2_APP_NAME=myapp
+BACKEND_PORT=3000
+
+CLOUDFLARE_ENABLED=true
+CLOUDFLARE_ZONE=example.com
+CLOUDFLARE_LOCKDOWN_FIREWALL=true
+CLOUDFLARE_ACCESS_EMAILS=you@example.com
+```
+
+Run `shipnode cloudflare init` with `CLOUDFLARE_API_TOKEN` exported in your shell. For first-time setup, if `ssh.example.com` is not reachable yet, export `SHIPNODE_BOOTSTRAP_SSH_HOST` temporarily; do not commit the origin IP.
+
 ## All Configuration Options
 
 ### Required
@@ -42,6 +65,8 @@ DOMAIN=myapp.com
 |----------|------|---------|-------------|
 | `SSH_PORT` | number | `22` | SSH port |
 | `SSH_KEY` | string | `~/.ssh/id_rsa` | Path to SSH private key |
+| `SSH_PROXY_MODE` | string | `direct` | `direct` or `cloudflare` |
+| `SSH_PROXY_COMMAND` | string | `cloudflared access ssh --hostname %h` | SSH ProxyCommand used when `SSH_PROXY_MODE=cloudflare` |
 
 ### Backend Options
 
@@ -58,6 +83,28 @@ DOMAIN=myapp.com
 |----------|------|---------|-------------|
 | `DOMAIN` | string | - | Domain for HTTPS |
 | `BUILD_DIR` | string | auto | Build output directory |
+
+### Cloudflare Easy Mode
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `CLOUDFLARE_ENABLED` | boolean | `false` | Enable Cloudflare setup commands |
+| `CLOUDFLARE_ZONE` | string | - | Cloudflare zone, such as `example.com` |
+| `CLOUDFLARE_APP_HOSTNAME` | string | `DOMAIN` | Public app hostname routed through Tunnel |
+| `CLOUDFLARE_SSH_HOSTNAME` | string | `SSH_HOST` | SSH hostname routed through Tunnel and Access |
+| `CLOUDFLARE_TUNNEL_NAME` | string | app path name | Tunnel name to create or reuse |
+| `CLOUDFLARE_LOCKDOWN_FIREWALL` | boolean | `false` | Remove public UFW allows for 22/80/443 after Tunnel setup |
+| `CLOUDFLARE_ACCESS_EMAILS` | string | - | Optional comma-separated emails for an Access allow policy |
+
+Secrets:
+
+```bash
+export CLOUDFLARE_API_TOKEN=...
+```
+
+`shipnode cloudflare init` creates or reuses the Cloudflare Tunnel, adds DNS CNAME routes for the app and SSH hostnames, configures an SSH Access application, installs `cloudflared` on the server, and can lock down direct inbound web/SSH ports. Lockdown is skipped until an Access policy exists; set `CLOUDFLARE_ACCESS_EMAILS` for automatic email-based allow-listing.
+
+See the full setup and API-token permission guide in [Cloudflare Easy Mode](../guides/cloudflare.md).
 
 ### Node.js
 

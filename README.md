@@ -493,6 +493,30 @@ shipnode doctor --security
 
 Non-destructive check of: SSH config, firewall status, fail2ban, file permissions.
 
+### Cloudflare Easy Mode
+
+```bash
+export CLOUDFLARE_API_TOKEN=...
+shipnode cloudflare init
+shipnode cloudflare audit
+```
+
+Use Cloudflare Easy Mode when you want `DOMAIN` and `SSH_HOST` to be Cloudflare hostnames, with no origin IP committed to `shipnode.conf`:
+
+```bash
+DOMAIN=app.example.com
+SSH_HOST=ssh.example.com
+SSH_PROXY_MODE=cloudflare
+CLOUDFLARE_ENABLED=true
+CLOUDFLARE_ZONE=example.com
+CLOUDFLARE_LOCKDOWN_FIREWALL=true
+CLOUDFLARE_ACCESS_EMAILS=you@example.com
+```
+
+`cloudflare init` creates or reuses a Cloudflare Tunnel, routes app and SSH hostnames through it, configures Access SSH, installs `cloudflared` on the server, and can block direct inbound `22`, `80`, and `443`. Firewall lockdown is skipped until an Access policy exists, so set `CLOUDFLARE_ACCESS_EMAILS` for the easiest safe path. For first-time setup, set `SHIPNODE_BOOTSTRAP_SSH_HOST` temporarily if `ssh.example.com` is not reachable yet.
+
+For production, use a Cloudflare Account API Token rather than a user-owned token. Full guide: [Cloudflare Easy Mode](./docs/guides/cloudflare.md)
+
 ---
 
 ## CI/CD Integration
@@ -596,9 +620,15 @@ REMOTE_PATH=/var/www/app     # Where your app lives on the server
 
 # === Optional ===
 SSH_PORT=22                  # SSH port (default: 22)
+SSH_PROXY_MODE=direct        # "direct" or "cloudflare"
 NODE_VERSION=lts             # Node.js version for setup (default: lts)
 DOMAIN=myapp.com             # Domain for automatic HTTPS via Caddy
 PKG_MANAGER=                 # Override auto-detection (npm, yarn, pnpm, bun)
+
+# === Cloudflare Easy Mode ===
+# CLOUDFLARE_ENABLED=true
+# CLOUDFLARE_ZONE=example.com
+# CLOUDFLARE_LOCKDOWN_FIREWALL=true
 
 # === Backend-specific (required if APP_TYPE=backend) ===
 PM2_APP_NAME=myapp           # PM2 process name

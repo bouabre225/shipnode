@@ -33,6 +33,7 @@ MODULES=(
     "lib/commands/migrate.sh"
     "lib/commands/env.sh"
     "lib/commands/backup.sh"
+    "lib/commands/cloudflare.sh"
     "lib/commands/help.sh"
     "lib/commands/main.sh"
 )

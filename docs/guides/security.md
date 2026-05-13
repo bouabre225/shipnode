@@ -27,6 +27,8 @@ This interactive wizard helps you:
 - Allow HTTPS (443)
 - Deny all other incoming
 
+If you use Cloudflare Easy Mode, `shipnode cloudflare init` can lock the origin down more aggressively: inbound `22`, `80`, and `443` are blocked, and app/SSH traffic reaches the server through outbound `cloudflared` tunnels.
+
 ### Fail2ban
 
 Install fail2ban to block brute force attackers:
@@ -94,6 +96,23 @@ ufw enable
 ufw allow 2222/tcp  # your custom SSH port
 ufw delete allow 22  # remove default
 ```
+
+### With Cloudflare Easy Mode
+
+```bash
+export CLOUDFLARE_API_TOKEN=...
+shipnode cloudflare init
+shipnode cloudflare audit
+```
+
+Use this when you want `DOMAIN` and `SSH_HOST` to be Cloudflare hostnames instead of exposing the origin IP. Set `CLOUDFLARE_ACCESS_EMAILS` or create an Access policy before enabling firewall lockdown; ShipNode skips lockdown if no policy exists. For first-time setup, if `SSH_HOST=ssh.example.com` is not reachable yet, set `SHIPNODE_BOOTSTRAP_SSH_HOST` temporarily in your shell. Do not commit the origin IP.
+
+Expected firewall posture after setup:
+
+- Inbound `22`: blocked
+- Inbound `80`: blocked
+- Inbound `443`: blocked
+- Outbound: allowed
 
 ## fail2ban Configuration
 

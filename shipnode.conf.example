@@ -15,6 +15,10 @@ APP_TYPE=backend
 SSH_USER=root
 SSH_HOST=your-server-ip
 SSH_PORT=22
+# Optional: route SSH through Cloudflare Access/Tunnel instead of exposing SSH directly.
+# In Cloudflare mode, SSH_HOST should be a hostname such as ssh.example.com, not an IP.
+# SSH_PROXY_MODE=cloudflare
+# SSH_PROXY_COMMAND="cloudflared access ssh --hostname %h"
 
 # ============================================
 # Node.js Version
@@ -44,6 +48,21 @@ BACKEND_PORT=3000
 # Domain name for Caddy configuration
 # Leave empty to skip Caddy setup
 DOMAIN=myapp.com
+
+# ============================================
+# Optional: Cloudflare Easy Mode
+# ============================================
+# Creates/uses a Cloudflare Tunnel for app traffic and SSH, then optionally
+# locks down direct inbound 22/80/443. Requires CLOUDFLARE_API_TOKEN in your
+# environment, not in this file.
+# CLOUDFLARE_ENABLED=true
+# CLOUDFLARE_ZONE=example.com
+# CLOUDFLARE_APP_HOSTNAME=myapp.com
+# CLOUDFLARE_SSH_HOSTNAME=ssh.example.com
+# CLOUDFLARE_TUNNEL_NAME=myapp
+# CLOUDFLARE_LOCKDOWN_FIREWALL=true
+# Optional comma-separated Access allow policy:
+# CLOUDFLARE_ACCESS_EMAILS=you@example.com,teammate@example.com
 
 # ============================================
 # Optional: Build Directory

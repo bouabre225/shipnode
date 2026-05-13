@@ -72,6 +72,13 @@ default_config() {
     HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-3}"
     SHARED_DIRS="${SHARED_DIRS:-}"
     SHARED_FILES="${SHARED_FILES:-}"
+    SSH_PROXY_MODE="${SSH_PROXY_MODE:-direct}"
+    SSH_PROXY_COMMAND="${SSH_PROXY_COMMAND:-cloudflared access ssh --hostname %h}"
+    CLOUDFLARE_ENABLED="${CLOUDFLARE_ENABLED:-false}"
+    CLOUDFLARE_HOSTNAME="${CLOUDFLARE_HOSTNAME:-${DOMAIN:-}}"
+    CLOUDFLARE_APP_HOSTNAME="${CLOUDFLARE_APP_HOSTNAME:-${CLOUDFLARE_HOSTNAME:-}}"
+    CLOUDFLARE_SSH_HOSTNAME="${CLOUDFLARE_SSH_HOSTNAME:-${SSH_HOST:-}}"
+    CLOUDFLARE_LOCKDOWN_FIREWALL="${CLOUDFLARE_LOCKDOWN_FIREWALL:-false}"
     DB_BACKUP_ENABLED="${DB_BACKUP_ENABLED:-false}"
     DB_BACKUP_SCHEDULE="${DB_BACKUP_SCHEDULE:-daily}"
     DB_BACKUP_RETENTION_DAYS="${DB_BACKUP_RETENTION_DAYS:-14}"
@@ -94,6 +101,16 @@ validate_config() {
 
     if [ "$APP_TYPE" != "backend" ] && [ "$APP_TYPE" != "frontend" ]; then
         error "APP_TYPE must be 'backend' or 'frontend'"
+    fi
+
+    if [ "$SSH_PROXY_MODE" != "direct" ] && [ "$SSH_PROXY_MODE" != "cloudflare" ]; then
+        error "SSH_PROXY_MODE must be 'direct' or 'cloudflare'"
+    fi
+
+    if [ "$SSH_PROXY_MODE" = "cloudflare" ]; then
+        if is_raw_ip_address "$SSH_HOST"; then
+            error "SSH_HOST must be a Cloudflare SSH hostname when SSH_PROXY_MODE=cloudflare"
+        fi
     fi
 
     if [ "$APP_TYPE" = "backend" ]; then

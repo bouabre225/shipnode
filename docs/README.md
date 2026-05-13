@@ -21,6 +21,7 @@ Welcome to the ShipNode documentation. Here you'll find detailed guides and refe
 - [Health Checks](./guides/health-checks.md) - Configure health check endpoints
 - [Environment Variables](./guides/environment-variables.md) - Managing .env files
 - [Security](./guides/security.md) - Server hardening
+- [Cloudflare Easy Mode](./guides/cloudflare.md) - Hide origin IP with Cloudflare Tunnel and Access SSH
 - [CI/CD](./guides/ci-cd.md) - GitHub Actions integration
 
 ### Reference

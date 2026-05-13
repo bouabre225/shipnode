@@ -10,25 +10,39 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # ShipNode version
-VERSION="1.5.1"
+VERSION="1.6.0"
 
 # SSH multiplexing for connection reuse
 SSH_CONTROL_PATH="/tmp/shipnode-ssh-%r@%h:%p"
 
 start_ssh_multiplex() {
     if [ -n "${SSH_USER:-}" ] && [ -n "${SSH_HOST:-}" ]; then
-        ssh -o ControlMaster=auto -o ControlPath="$SSH_CONTROL_PATH" \
-            -o ControlPersist=300 -fN -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" 2>/dev/null || true
+        local ssh_opts=(
+            -o ControlMaster=auto
+            -o ControlPath="$SSH_CONTROL_PATH"
+            -o ControlPersist=300
+        )
+        if ssh_uses_cloudflare_proxy; then
+            ssh_opts+=(-o "ProxyCommand=$(ssh_proxy_command)")
+        fi
+        ssh "${ssh_opts[@]}" -fN -p "${SSH_PORT:-22}" "$SSH_USER@$SSH_HOST" 2>/dev/null || true
     fi
 }
 
 stop_ssh_multiplex() {
-    ssh -o ControlPath="$SSH_CONTROL_PATH" -O exit \
-        -p "${SSH_PORT:-22}" "${SSH_USER:-}@${SSH_HOST:-}" 2>/dev/null || true
+    local ssh_opts=(-o ControlPath="$SSH_CONTROL_PATH")
+    if ssh_uses_cloudflare_proxy; then
+        ssh_opts+=(-o "ProxyCommand=$(ssh_proxy_command)")
+    fi
+    ssh "${ssh_opts[@]}" -O exit -p "${SSH_PORT:-22}" "${SSH_USER:-}@${SSH_HOST:-}" 2>/dev/null || true
 }
 
 ssh_cmd() {
-    ssh -o ControlPath="$SSH_CONTROL_PATH" "$@"
+    local ssh_opts=(-o ControlPath="$SSH_CONTROL_PATH")
+    if ssh_uses_cloudflare_proxy; then
+        ssh_opts+=(-o "ProxyCommand=$(ssh_proxy_command)")
+    fi
+    ssh "${ssh_opts[@]}" "$@"
 }
 
 # High-level SSH helpers using multiplexed connection
@@ -37,14 +51,35 @@ remote_exec() {
 }
 
 remote_copy() {
-    scp -o ControlPath="$SSH_CONTROL_PATH" -P "$SSH_PORT" "$@"
+    local scp_opts=(-o ControlPath="$SSH_CONTROL_PATH")
+    if ssh_uses_cloudflare_proxy; then
+        scp_opts+=(-o "ProxyCommand=$(ssh_proxy_command)")
+    fi
+    scp "${scp_opts[@]}" -P "$SSH_PORT" "$@"
 }
 
 remote_rsync() {
-    rsync -e "ssh -o ControlPath=$SSH_CONTROL_PATH -p $SSH_PORT" "$@"
+    local ssh_transport="ssh -o ControlPath=$SSH_CONTROL_PATH -p $SSH_PORT"
+    if ssh_uses_cloudflare_proxy; then
+        ssh_transport="$ssh_transport -o ProxyCommand='$(ssh_proxy_command)'"
+    fi
+    rsync -e "$ssh_transport" "$@"
 }
 
 export SSH_CONTROL_PATH
+
+ssh_uses_cloudflare_proxy() {
+    [ "${SSH_PROXY_MODE:-}" = "cloudflare" ]
+}
+
+ssh_proxy_command() {
+    echo "${SSH_PROXY_COMMAND:-cloudflared access ssh --hostname %h}"
+}
+
+is_raw_ip_address() {
+    local value="$1"
+    [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || [[ "$value" =~ : ]]
+}
 
 # Helper functions
 error() {

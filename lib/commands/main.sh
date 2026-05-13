@@ -124,6 +124,9 @@ main() {
         harden)
             cmd_harden
             ;;
+        cloudflare)
+            cmd_cloudflare "${cmd_args[@]}"
+            ;;
         eject)
             cmd_eject "${cmd_args[0]:-all}"
             ;;

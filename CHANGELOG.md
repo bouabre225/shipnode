@@ -5,6 +5,20 @@ All notable changes to ShipNode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-13
+
+### Added
+- **`shipnode cloudflare init`**: Configure Cloudflare Tunnel, DNS records, Access SSH, remote `cloudflared`, and optional origin firewall lockdown from `shipnode.conf`.
+- **`shipnode cloudflare audit`**: Check common origin privacy issues, including raw-IP SSH hosts, missing local/remote `cloudflared`, and exposed UFW ports.
+- **`shipnode cloudflare status`**: Show resolved Cloudflare settings and remote tunnel service status.
+- **Cloudflare SSH proxy mode**: `SSH_PROXY_MODE=cloudflare` routes ShipNode SSH/SCP/rsync through `cloudflared access ssh`.
+- **Multi-app tunnel support**: Cloudflare init now merges tunnel ingress rules, preserving other apps on the same server-level tunnel.
+- Cloudflare Easy Mode guide covering Account API Tokens, permissions, bootstrap SSH, multi-app routing, and firewall behavior.
+
+### Changed
+- `config validate` rejects raw IP addresses in `SSH_HOST` when `SSH_PROXY_MODE=cloudflare`.
+- Cloudflare DNS setup replaces conflicting A/AAAA records with tunnel CNAME records while refusing to overwrite unrelated record types.
+
 ## [1.5.1] - 2026-05-13
 
 ### Changed
