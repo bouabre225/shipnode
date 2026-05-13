@@ -14,23 +14,10 @@ redact_secrets() {
 cmd_deploy_dry_run() {
     load_config
 
-    local SKIP_BUILD=false
-    if [ "$1" = "--skip-build" ]; then
-        SKIP_BUILD=true
-    fi
-
-    # Detect package manager
-    PKG_MANAGER=$(detect_pkg_manager)
-    PKG_INSTALL_CMD=$(get_pkg_install_cmd "$PKG_MANAGER")
-    PKG_RUN_CMD=$(get_pkg_run_cmd "$PKG_MANAGER" "build")
-    
-    # Detect build directory for frontend
-    local BUILD_DIR="dist"
-    if [ -d "build" ]; then
-        BUILD_DIR="build"
-    elif [ -d "public" ]; then
-        BUILD_DIR="public"
-    fi
+    deploy_plan_load "$1"
+    deploy_plan_apply_globals
+    local SKIP_BUILD="$DEPLOY_SKIP_BUILD"
+    local BUILD_DIR="$DEPLOY_FRONTEND_BUILD_DIR"
 
     echo ""
     echo "==========================================="
@@ -83,8 +70,8 @@ cmd_deploy_dry_run() {
     echo "Remote Deployment Commands:"
     
     if [ "$ZERO_DOWNTIME" = "true" ]; then
-        local timestamp=$(date +"%Y%m%d%H%M%S")
-        local release_path="$REMOTE_PATH/releases/$timestamp"
+        local timestamp="$DEPLOY_RELEASE_PREVIEW"
+        local release_path="$DEPLOY_RELEASE_PREVIEW_PATH"
         
         echo "  Mode: Zero-Downtime Deployment"
         echo ""
@@ -259,15 +246,9 @@ cmd_deploy_dry_run() {
 cmd_deploy() {
     load_config
 
-    local SKIP_BUILD=false
-    if [ "$1" = "--skip-build" ]; then
-        SKIP_BUILD=true
-    fi
-
-    # Detect package manager
-    PKG_MANAGER=$(detect_pkg_manager)
-    PKG_INSTALL_CMD=$(get_pkg_install_cmd "$PKG_MANAGER")
-    PKG_RUN_CMD=$(get_pkg_run_cmd "$PKG_MANAGER" "build")
+    deploy_plan_load "$1"
+    deploy_plan_apply_globals
+    local SKIP_BUILD="$DEPLOY_SKIP_BUILD"
 
     info "Deploying $APP_TYPE to $SSH_USER@$SSH_HOST..."
 
@@ -577,12 +558,7 @@ deploy_frontend() {
     fi
 
     # Determine build directory
-    local BUILD_DIR="dist"
-    if [ -d "build" ]; then
-        BUILD_DIR="build"
-    elif [ -d "public" ]; then
-        BUILD_DIR="public"
-    fi
+    local BUILD_DIR="$DEPLOY_FRONTEND_BUILD_DIR"
 
     [ ! -d "$BUILD_DIR" ] && error "$BUILD_DIR directory not found"
 
