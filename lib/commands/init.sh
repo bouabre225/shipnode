@@ -444,6 +444,10 @@ DOMAIN=myapp.com
 ZERO_DOWNTIME=true
 KEEP_RELEASES=5
 
+# Persistent files/directories shared across releases (optional)
+# SHARED_DIRS="public/uploads storage"
+# SHARED_FILES=""
+
 # Health checks for backend (optional)
 HEALTH_CHECK_ENABLED=true
 HEALTH_CHECK_PATH=/health
@@ -508,6 +512,10 @@ DOMAIN=myapp.com
 # Zero-downtime deployment (optional)
 ZERO_DOWNTIME=true
 KEEP_RELEASES=5
+
+# Persistent files/directories shared across releases (optional)
+# SHARED_DIRS="public/uploads storage"
+# SHARED_FILES=""
 
 # Health checks for backend (optional)
 HEALTH_CHECK_ENABLED=true
@@ -861,6 +869,10 @@ EOF
 # Zero-downtime deployment
 ZERO_DOWNTIME=$zero_downtime
 KEEP_RELEASES=$keep_releases
+
+# Persistent files/directories shared across releases
+# SHARED_DIRS="public/uploads storage"
+# SHARED_FILES=""
 EOF
 
     # Health check settings (backend only)
@@ -1596,6 +1608,10 @@ EOF
 # Zero-downtime deployment
 ZERO_DOWNTIME=$zero_downtime
 KEEP_RELEASES=$keep_releases
+
+# Persistent files/directories shared across releases
+# SHARED_DIRS="public/uploads storage"
+# SHARED_FILES=""
 EOF
 
     # Health check settings (backend only)

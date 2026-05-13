@@ -48,6 +48,12 @@ cmd_config_show() {
     echo ""
     echo "  Zero Downtime:  ${ZERO_DOWNTIME}"
     echo "  Keep Releases:  ${KEEP_RELEASES}"
+    if [ -n "$SHARED_DIRS" ] || [ -n "$SHARED_FILES" ]; then
+        echo ""
+        echo "  Shared Resources:"
+        [ -n "$SHARED_DIRS" ] && echo "    Dirs:       ${SHARED_DIRS}"
+        [ -n "$SHARED_FILES" ] && echo "    Files:      ${SHARED_FILES}"
+    fi
 
     if [ "$APP_TYPE" = "backend" ]; then
         echo ""

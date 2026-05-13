@@ -712,6 +712,20 @@ These are excluded from rsync by default:
 
 Customize with `.shipnodeignore` (like `.gitignore`).
 
+### Shared Assets and Uploads
+
+Use shared resources for files that must survive deploys and rollbacks, such as user uploads, generated media, cached documents, or runtime storage.
+
+```bash
+# shipnode.conf
+SHARED_DIRS="public/uploads storage"
+SHARED_FILES=""
+```
+
+During deployment, ShipNode stores those paths under `$REMOTE_PATH/shared/` and symlinks them into each release. For legacy frontend deploys, backing storage lives at `$REMOTE_PATH.shared/` so it is not exposed by the static file server. If a configured shared directory or file already exists in the first uploaded release, ShipNode promotes it before creating the symlink.
+
+Keep versioned images, fonts, and frontend assets in your app as usual. For large media libraries, prefer object storage such as S3, R2, or Spaces.
+
 ---
 
 ## Troubleshooting

@@ -70,6 +70,8 @@ default_config() {
     HEALTH_CHECK_PATH="${HEALTH_CHECK_PATH:-/health}"
     HEALTH_CHECK_TIMEOUT="${HEALTH_CHECK_TIMEOUT:-30}"
     HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-3}"
+    SHARED_DIRS="${SHARED_DIRS:-}"
+    SHARED_FILES="${SHARED_FILES:-}"
     DB_BACKUP_ENABLED="${DB_BACKUP_ENABLED:-false}"
     DB_BACKUP_SCHEDULE="${DB_BACKUP_SCHEDULE:-daily}"
     DB_BACKUP_RETENTION_DAYS="${DB_BACKUP_RETENTION_DAYS:-14}"
@@ -101,6 +103,10 @@ validate_config() {
         if [ -z "$BACKEND_PORT" ]; then
             error "BACKEND_PORT required for backend apps"
         fi
+    fi
+
+    if [ -n "$SHARED_DIRS" ] || [ -n "$SHARED_FILES" ]; then
+        validate_shared_resource_paths
     fi
 }
 

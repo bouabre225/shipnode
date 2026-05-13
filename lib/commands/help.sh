@@ -85,6 +85,10 @@ Zero-Downtime Deployment:
     HEALTH_CHECK_TIMEOUT=30      Health check timeout seconds (default: 30)
     HEALTH_CHECK_RETRIES=3       Number of health check retries (default: 3)
 
+Shared Resources:
+    SHARED_DIRS="public/uploads storage"   Persistent directories symlinked into each release
+    SHARED_FILES=".env.local"              Persistent files symlinked when present in shared/
+
 User Provisioning:
     Create users.yml with user definitions, then run 'shipnode user sync'.
     Generate password hashes with 'shipnode mkpasswd'.

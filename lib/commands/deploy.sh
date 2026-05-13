@@ -34,6 +34,12 @@ cmd_deploy_dry_run() {
     echo "  Remote Path:     $REMOTE_PATH"
     echo "  Package Manager: $PKG_MANAGER"
     echo "  Zero Downtime:   ${ZERO_DOWNTIME:-true}"
+    if [ -n "$SHARED_DIRS" ]; then
+        echo "  Shared Dirs:     $SHARED_DIRS"
+    fi
+    if [ -n "$SHARED_FILES" ]; then
+        echo "  Shared Files:    $SHARED_FILES"
+    fi
     
     if [ "$APP_TYPE" = "backend" ]; then
         echo "  PM2 App Name:    $PM2_APP_NAME"
@@ -91,6 +97,9 @@ cmd_deploy_dry_run() {
         echo ""
         echo "    5. Remote setup commands:"
         echo "       - cd $release_path"
+        if [ -n "$SHARED_DIRS" ] || [ -n "$SHARED_FILES" ]; then
+            echo "       - Link shared resources from $REMOTE_PATH/shared"
+        fi
         if [ -f "$REMOTE_PATH/shared/.env" ] || [ -f ".env" ]; then
             echo "       - ln -sf $REMOTE_PATH/shared/.env .env"
         fi
@@ -177,6 +186,9 @@ cmd_deploy_dry_run() {
         echo "    3. Remote build commands:"
         if [ "$APP_TYPE" = "backend" ]; then
             echo "       - cd $REMOTE_PATH"
+            if [ -n "$SHARED_DIRS" ] || [ -n "$SHARED_FILES" ]; then
+                echo "       - Link shared resources from $REMOTE_PATH/shared"
+            fi
             echo "       - $PKG_INSTALL_CMD"
             if [ -f "package.json" ] && [ "$SKIP_BUILD" = false ]; then
                 if jq -e '.scripts.build' package.json >/dev/null 2>&1; then
@@ -342,6 +354,8 @@ deploy_backend_legacy() {
 
     success "Files synced"
 
+    link_shared_resources "$REMOTE_PATH"
+
     # Install dependencies and build
     info "Installing dependencies..."
     remote_exec bash << ENDSSH
@@ -445,6 +459,7 @@ deploy_backend_zero_downtime() {
 
     # Link shared resources, install dependencies, and build
     info "Setting up release environment..."
+    link_shared_resources "$release_path"
     remote_exec bash << ENDSSH
         set -e
         export PATH="\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH"
@@ -580,6 +595,8 @@ deploy_frontend_legacy() {
 
     success "Frontend deployed"
 
+    link_shared_resources "$REMOTE_PATH" "$REMOTE_PATH.shared"
+
     # Run pre-deploy hook
     if ! run_pre_deploy_hook "$REMOTE_PATH"; then
         error "Pre-deploy hook failed, aborting deployment"
@@ -620,6 +637,8 @@ deploy_frontend_zero_downtime() {
         "$BUILD_DIR/" "$SSH_USER@$SSH_HOST:$release_path/"
 
     success "Files synced to $release_path"
+
+    link_shared_resources "$release_path"
 
     # Run pre-deploy hook
     if ! run_pre_deploy_hook "$release_path"; then

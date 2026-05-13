@@ -26,6 +26,91 @@ setup_release_structure() {
 ENDSSH
 }
 
+validate_shared_resource_paths() {
+    local resource
+
+    for resource in $SHARED_DIRS $SHARED_FILES; do
+        case "$resource" in
+            ""|"."|/*|*..*|*~*|*//*|shared|shared/*|releases|releases/*|current|current/*|.shipnode|.shipnode/*)
+                error "Invalid shared resource path: '$resource'. Use relative app paths outside ShipNode-managed directories."
+                ;;
+        esac
+    done
+}
+
+link_shared_resources() {
+    local release_path="$1"
+    local shared_root="${2:-$REMOTE_PATH/shared}"
+
+    if [ -z "$SHARED_DIRS" ] && [ -z "$SHARED_FILES" ]; then
+        return 0
+    fi
+
+    validate_shared_resource_paths
+    info "Linking shared resources..."
+
+    remote_exec bash -s "$release_path" "$shared_root" "$SHARED_DIRS" "$SHARED_FILES" << 'ENDSSH'
+        set -e
+
+        release_path="$1"
+        shared_root="$2"
+        shared_dirs="$3"
+        shared_files="$4"
+
+        promote_or_link_dir() {
+            resource="$1"
+            release_resource="$release_path/$resource"
+            shared_resource="$shared_root/$resource"
+            shared_parent="$(dirname "$shared_resource")"
+            release_parent="$(dirname "$release_resource")"
+
+            mkdir -p "$shared_parent" "$release_parent"
+
+            if [ ! -e "$shared_resource" ] && [ -d "$release_resource" ] && [ ! -L "$release_resource" ]; then
+                mv "$release_resource" "$shared_resource"
+            else
+                mkdir -p "$shared_resource"
+                if [ -e "$release_resource" ] || [ -L "$release_resource" ]; then
+                    rm -rf "$release_resource"
+                fi
+            fi
+
+            ln -sfn "$shared_resource" "$release_resource"
+        }
+
+        promote_or_link_file() {
+            resource="$1"
+            release_resource="$release_path/$resource"
+            shared_resource="$shared_root/$resource"
+            shared_parent="$(dirname "$shared_resource")"
+            release_parent="$(dirname "$release_resource")"
+
+            mkdir -p "$shared_parent" "$release_parent"
+
+            if [ ! -e "$shared_resource" ] && [ -f "$release_resource" ] && [ ! -L "$release_resource" ]; then
+                mv "$release_resource" "$shared_resource"
+            fi
+
+            if [ -e "$shared_resource" ]; then
+                if [ -e "$release_resource" ] || [ -L "$release_resource" ]; then
+                    rm -rf "$release_resource"
+                fi
+                ln -sfn "$shared_resource" "$release_resource"
+            fi
+        }
+
+        for resource in $shared_dirs; do
+            [ -n "$resource" ] && promote_or_link_dir "$resource"
+        done
+
+        for resource in $shared_files; do
+            [ -n "$resource" ] && promote_or_link_file "$resource"
+        done
+ENDSSH
+
+    success "Shared resources linked"
+}
+
 acquire_deploy_lock() {
     local result
     result=$(remote_exec bash -s "$REMOTE_PATH" << 'ENDSSH'
