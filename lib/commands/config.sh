@@ -39,8 +39,7 @@ set_config_file() {
     printf '%s\n' "${args[*]}"
 }
 
-# Load configuration
-load_config() {
+parse_config() {
     if [ ! -f "$SHIPNODE_CONFIG_FILE" ]; then
         error "$SHIPNODE_CONFIG_FILE not found. Run 'shipnode init' first."
     fi
@@ -61,8 +60,23 @@ load_config() {
         error "Failed to parse $SHIPNODE_CONFIG_FILE"
     fi
     set +a
+}
 
-    # Validate required variables
+default_config() {
+    SSH_PORT="${SSH_PORT:-22}"
+    ZERO_DOWNTIME="${ZERO_DOWNTIME:-true}"
+    KEEP_RELEASES="${KEEP_RELEASES:-5}"
+    HEALTH_CHECK_ENABLED="${HEALTH_CHECK_ENABLED:-true}"
+    HEALTH_CHECK_PATH="${HEALTH_CHECK_PATH:-/health}"
+    HEALTH_CHECK_TIMEOUT="${HEALTH_CHECK_TIMEOUT:-30}"
+    HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-3}"
+    DB_BACKUP_ENABLED="${DB_BACKUP_ENABLED:-false}"
+    DB_BACKUP_SCHEDULE="${DB_BACKUP_SCHEDULE:-daily}"
+    DB_BACKUP_RETENTION_DAYS="${DB_BACKUP_RETENTION_DAYS:-14}"
+    DB_BACKUP_LOCAL_DIR="${DB_BACKUP_LOCAL_DIR:-$REMOTE_PATH/shared/backups}"
+}
+
+validate_config() {
     if [ -z "$APP_TYPE" ]; then
         error "APP_TYPE not set in $SHIPNODE_CONFIG_FILE"
     fi
@@ -76,25 +90,10 @@ load_config() {
         error "REMOTE_PATH not set in $SHIPNODE_CONFIG_FILE"
     fi
 
-    # Set defaults
-    SSH_PORT="${SSH_PORT:-22}"
-    ZERO_DOWNTIME="${ZERO_DOWNTIME:-true}"
-    KEEP_RELEASES="${KEEP_RELEASES:-5}"
-    HEALTH_CHECK_ENABLED="${HEALTH_CHECK_ENABLED:-true}"
-    HEALTH_CHECK_PATH="${HEALTH_CHECK_PATH:-/health}"
-    HEALTH_CHECK_TIMEOUT="${HEALTH_CHECK_TIMEOUT:-30}"
-    HEALTH_CHECK_RETRIES="${HEALTH_CHECK_RETRIES:-3}"
-    DB_BACKUP_ENABLED="${DB_BACKUP_ENABLED:-false}"
-    DB_BACKUP_SCHEDULE="${DB_BACKUP_SCHEDULE:-daily}"
-    DB_BACKUP_RETENTION_DAYS="${DB_BACKUP_RETENTION_DAYS:-14}"
-    DB_BACKUP_LOCAL_DIR="${DB_BACKUP_LOCAL_DIR:-$REMOTE_PATH/shared/backups}"
-
-    # Validate APP_TYPE
     if [ "$APP_TYPE" != "backend" ] && [ "$APP_TYPE" != "frontend" ]; then
         error "APP_TYPE must be 'backend' or 'frontend'"
     fi
 
-    # Backend-specific validation
     if [ "$APP_TYPE" = "backend" ]; then
         if [ -z "$PM2_APP_NAME" ]; then
             error "PM2_APP_NAME required for backend apps"
@@ -103,12 +102,22 @@ load_config() {
             error "BACKEND_PORT required for backend apps"
         fi
     fi
+}
+
+activate_config() {
+    parse_config
+    default_config
+    validate_config
 
     # Start SSH multiplex connection once per session
     if [ -z "${_SHIPNODE_MULTIPLEX_STARTED:-}" ]; then
         start_ssh_multiplex
         _SHIPNODE_MULTIPLEX_STARTED=1
     fi
+}
+
+load_config() {
+    activate_config
 }
 
 # Interactive users.yml generation
