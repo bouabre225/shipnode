@@ -17,28 +17,27 @@ cmd_doctor() {
     info "Running ShipNode diagnostics..."
     echo ""
 
-    local has_errors=false
-    local has_warnings=false
+    check_results_reset
 
     # Local checks
     info "Local environment:"
-    check_local_config || has_errors=true
-    check_local_env || has_warnings=true
-    check_local_node || has_errors=true
-    check_local_package_json || has_warnings=true
+    run_check error check_local_config || true
+    run_check warning check_local_env || true
+    run_check error check_local_node || true
+    run_check warning check_local_package_json || true
     echo ""
 
     # Config validation (if config exists)
     if [ -f "$SHIPNODE_CONFIG_FILE" ]; then
         info "Configuration validation:"
-        check_health_check_path || has_warnings=true
+        run_check warning check_health_check_path || true
         echo ""
     fi
 
     # SSH connectivity
     info "SSH connectivity:"
     if ! check_ssh_connection; then
-        has_errors=true
+        CHECK_HAS_ERRORS=true
         warn "Cannot perform remote checks - SSH connection failed"
         echo ""
     else
@@ -46,15 +45,15 @@ cmd_doctor() {
 
         # Remote checks (batched)
         info "Remote environment:"
-        check_remote_environment || has_errors=true
+        run_check error check_remote_environment || true
         echo ""
     fi
 
     # Summary
     echo ""
-    if [ "$has_errors" = true ]; then
+    if check_results_failed; then
         error "Diagnostics completed with errors. Please fix the issues above."
-    elif [ "$has_warnings" = true ]; then
+    elif check_results_warned; then
         warn "Diagnostics completed with warnings. Review the warnings above."
         echo ""
         info "System is functional but some optional features may be unavailable."
@@ -68,12 +67,11 @@ cmd_doctor_security() {
     info "Running security audit..."
     echo ""
 
-    local has_warnings=false
-    local has_info=false
+    check_results_reset
 
     # Local security checks
     info "Local security checks:"
-    check_local_file_permissions || has_warnings=true
+    run_check warning check_local_file_permissions || true
     echo ""
 
     # SSH connectivity required for remote checks
@@ -85,19 +83,19 @@ cmd_doctor_security() {
 
         # Remote security checks
         info "Remote security checks:"
-        check_ssh_security || has_warnings=true
-        check_firewall_status || has_info=true
-        check_fail2ban_status || has_info=true
+        run_check warning check_ssh_security || true
+        run_check info check_firewall_status || true
+        run_check info check_fail2ban_status || true
         echo ""
     fi
 
     # Summary
     echo ""
-    if [ "$has_warnings" = true ]; then
+    if check_results_warned; then
         warn "Security audit completed with warnings. Review the issues above."
         echo ""
         info "Run 'shipnode harden' for interactive security hardening."
-    elif [ "$has_info" = true ]; then
+    elif check_results_informed; then
         info "Security audit completed with informational notices."
         echo ""
         info "No critical issues found. Review the notices above."
