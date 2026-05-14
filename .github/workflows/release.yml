@@ -38,12 +38,12 @@ jobs:
 
     - name: Run ShellCheck errors
       run: |
-        shellcheck --severity=error shipnode lib/*.sh lib/commands/*.sh build.sh build-dist.sh install.sh uninstall.sh scripts/*.sh
+        shellcheck -s bash --severity=error shipnode lib/*.sh lib/commands/*.sh build.sh build-dist.sh install.sh uninstall.sh scripts/*.sh
 
     - name: Report ShellCheck warnings
       continue-on-error: true
       run: |
-        shellcheck --severity=warning shipnode lib/*.sh lib/commands/*.sh build.sh build-dist.sh install.sh uninstall.sh scripts/*.sh
+        shellcheck -s bash --severity=warning shipnode lib/*.sh lib/commands/*.sh build.sh build-dist.sh install.sh uninstall.sh scripts/*.sh
 
     - name: Setup Node.js
       uses: actions/setup-node@v4

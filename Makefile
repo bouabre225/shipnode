@@ -68,11 +68,4 @@ release:
 	echo "Pushing tag to origin..."; \
 	git push origin "v$$VERSION"; \
 	\
-	echo "Creating GitHub release..."; \
-	gh release create "v$$VERSION" \
-		dist/shipnode-installer.sh \
-		--title "ShipNode v$$VERSION" \
-		--notes "Release v$$VERSION" \
-		--verify-tag; \
-	\
-	echo "✓ Release v$$VERSION created successfully!"
+	echo "✓ Tag v$$VERSION pushed. GitHub Actions will build and publish the release."
