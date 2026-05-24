@@ -53,6 +53,11 @@ $DOMAIN {
 
     try_files {path} /index.html
 
+    @static {
+        path *.css *.js *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
     header {
         X-Content-Type-Options nosniff
         X-Frame-Options DENY

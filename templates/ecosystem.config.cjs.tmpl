@@ -13,8 +13,8 @@
 module.exports = {
   apps: [{
     name: "{{APP_NAME}}",
-    script: "{{INTERPRETER}}",
-    args: "start",
+    script: "mise",
+    args: "exec -- {{INTERPRETER}} start",
     cwd: "{{REMOTE_PATH}}/current",
     autorestart: true,
     max_restarts: 10,
@@ -29,7 +29,8 @@ module.exports = {
 
     env: {
       NODE_ENV: "production",
-      PORT: {{BACKEND_PORT}}
+      PORT: {{BACKEND_PORT}},
+      PATH: process.env.HOME + "/.local/bin:" + process.env.HOME + "/.local/share/mise/shims:" + process.env.PATH
     }
   }]
 };

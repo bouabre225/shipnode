@@ -158,7 +158,24 @@ detect_framework() {
     
     # Suggest app type
     local app_type=$(suggest_app_type "$deps")
-    
+
+    # Nuxt override: read nuxt.config to detect static vs SSR mode
+    if [ "$framework" = "Nuxt" ]; then
+        local nuxt_config=""
+        for f in nuxt.config.ts nuxt.config.js nuxt.config.mjs; do
+            if [ -f "$f" ]; then
+                nuxt_config="$f"
+                break
+            fi
+        done
+        if [ -n "$nuxt_config" ]; then
+            if grep -qE 'ssr\s*:\s*false' "$nuxt_config" 2>/dev/null || \
+               grep -qE "preset\s*:\s*['\"]static['\"]" "$nuxt_config" 2>/dev/null; then
+                app_type="frontend"
+            fi
+        fi
+    fi
+
     echo "${framework}|${app_type}"
     return 0
 }

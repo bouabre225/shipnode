@@ -168,16 +168,16 @@ perform_health_check() {
     for i in $(seq 1 $max_retries); do
         _HEALTH_CHECK_ATTEMPTS=$i
 
-        local start_ms
-        start_ms=$(current_time_ms)
-
-        if remote_exec "timeout $timeout curl -sf http://localhost:$port$path" > /dev/null 2>&1; then
-            local end_ms
-            end_ms=$(current_time_ms)
-            if [ "$start_ms" != "0" ] && [ "$end_ms" != "0" ]; then
-                _HEALTH_CHECK_RESPONSE_MS=$(( end_ms - start_ms ))
+        local response_time curl_exit
+        response_time=$(remote_exec "timeout $timeout curl -sf -o /dev/null -w '%{time_total}' http://localhost:$port$path" 2>/dev/null)
+        curl_exit=$?
+        if [ $curl_exit -eq 0 ]; then
+            if [[ "$response_time" =~ ^[0-9] ]]; then
+                _HEALTH_CHECK_RESPONSE_MS=$(awk "BEGIN {printf \"%d\", $response_time * 1000}")
+                success "Health check passed (attempt $i, ${_HEALTH_CHECK_RESPONSE_MS}ms)"
+            else
+                success "Health check passed (attempt $i)"
             fi
-            success "Health check passed (attempt $i)"
             return 0
         fi
         [ $i -lt $max_retries ] && warn "Health check attempt $i failed, retrying..."
@@ -292,6 +292,7 @@ run_pre_deploy_hook() {
         export BACKEND_PORT="${BACKEND_PORT:-}"
         export SHARED_ENV_PATH="$REMOTE_PATH/shared/.env"
         export NODE_VERSION="${NODE_VERSION:-24}"
+        export RELEASE_TIMESTAMP="$(basename "$release_path")"
 
         # Make hook executable and run it
         chmod +x .shipnode-pre-deploy.sh
@@ -320,6 +321,7 @@ ENDSSH
 # Run post-deploy hook on remote server
 # Returns: 0 on success, 1 on failure (but deployment continues)
 run_post_deploy_hook() {
+    local release_path="${1:-$REMOTE_PATH/current}"
     local current_path="$REMOTE_PATH/current"
     local hook_script=${POST_DEPLOY_SCRIPT:-".shipnode/post-deploy.sh"}
 
@@ -342,7 +344,8 @@ run_post_deploy_hook() {
         cd $current_path
 
         # Export environment variables for hook
-        export RELEASE_PATH="$current_path"
+        export RELEASE_PATH="$release_path"
+        export RELEASE_TIMESTAMP="$(basename "$release_path")"
         export REMOTE_PATH="$REMOTE_PATH"
         export PM2_APP_NAME="${PM2_APP_NAME:-}"
         export BACKEND_PORT="${BACKEND_PORT:-}"

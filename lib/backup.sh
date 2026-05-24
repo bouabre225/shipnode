@@ -153,9 +153,6 @@ write_backup_files() {
         REMOTE_PATH="$REMOTE_PATH" \
         SHARED_ENV_PATH="${SHARED_ENV_PATH:-$REMOTE_PATH/shared/.env}" \
         DB_TYPE="${DB_TYPE:-postgresql}" \
-        DB_NAME="${DB_NAME:-}" \
-        DB_USER="${DB_USER:-}" \
-        DB_PASSWORD="${DB_PASSWORD:-}" \
         DB_SQLITE_PATH="$sqlite_path" \
         DB_BACKUP_S3_BUCKET="$DB_BACKUP_S3_BUCKET" \
         DB_BACKUP_S3_PREFIX="$backup_prefix" \
@@ -188,7 +185,7 @@ write_backup_files() {
         }
 
         for name in \
-            REMOTE_PATH SHARED_ENV_PATH DB_TYPE DB_NAME DB_USER DB_PASSWORD DB_SQLITE_PATH \
+            REMOTE_PATH SHARED_ENV_PATH DB_TYPE DB_SQLITE_PATH \
             DB_BACKUP_S3_BUCKET DB_BACKUP_S3_PREFIX DB_BACKUP_S3_ENDPOINT \
             DB_BACKUP_LOCAL_DIR DB_BACKUP_RETENTION_DAYS \
             AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION; do

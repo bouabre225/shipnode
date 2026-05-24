@@ -194,6 +194,40 @@ emit_database_config() {
     echo "# AWS_DEFAULT_REGION=eu-west-1"
 }
 
+generate_nextjs_health_route() {
+    for f in \
+        "app/api/health/route.ts" \
+        "app/api/health/route.js" \
+        "app/api/health/route.tsx" \
+        "pages/api/health.ts" \
+        "pages/api/health.js"; do
+        [ -f "$f" ] && return 0
+    done
+
+    if [ -d "app" ]; then
+        mkdir -p "app/api/health"
+        cat > "app/api/health/route.ts" << 'EOF'
+export function GET() {
+  return Response.json({ status: 'ok' })
+}
+EOF
+        success "Created app/api/health/route.ts"
+    elif [ -d "pages" ]; then
+        mkdir -p "pages/api"
+        cat > "pages/api/health.ts" << 'EOF'
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.status(200).json({ status: 'ok' })
+}
+EOF
+        success "Created pages/api/health.ts"
+    else
+        warn "Could not detect Next.js router type (no app/ or pages/ directory found)."
+        info "Create a health endpoint at /api/health before deploying."
+    fi
+}
+
 # Generate .shipnode/ directory with smart hook templates
 generate_shipnode_hooks() {
     # Create .shipnode directory
@@ -361,11 +395,12 @@ PREDEPLOY_EOF
 # Runs AFTER deployment completes. Failure won't rollback.
 #
 # Available environment variables:
-#   RELEASE_PATH    - Path to the current release (symlinked as 'current')
-#   REMOTE_PATH     - Base deployment directory
-#   PM2_APP_NAME    - PM2 process name (backend only)
-#   BACKEND_PORT    - Application port (backend only)
-#   SHARED_ENV_PATH - Path to the server's shared .env file
+#   RELEASE_PATH      - Absolute path to the deployed release
+#   RELEASE_TIMESTAMP - Release timestamp (e.g. 20250529143022)
+#   REMOTE_PATH       - Base deployment directory
+#   PM2_APP_NAME      - PM2 process name (backend only)
+#   BACKEND_PORT      - Application port (backend only)
+#   SHARED_ENV_PATH   - Path to the server's shared .env file
 
 set -e  # Exit on error (but failure won't rollback deployment)
 
@@ -894,6 +929,11 @@ EOF
     # Generate .shipnode/ hooks
     echo ""
     generate_shipnode_hooks
+
+    # Warn if Next.js health route is missing
+    if [ "$template_name" = "nextjs" ]; then
+        generate_nextjs_health_route
+    fi
 
     # Users.yml wizard
     echo ""
@@ -1633,6 +1673,11 @@ EOF
     # 9. Generate .shipnode/ hooks
     echo ""
     generate_shipnode_hooks
+
+    # Warn if Next.js health route is missing
+    if [ "$detected_framework" = "Next.js" ]; then
+        generate_nextjs_health_route
+    fi
 
     # 10. Users.yml wizard
     echo ""

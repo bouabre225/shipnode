@@ -406,7 +406,7 @@ ENDSSH
     success "Backend deployed and running"
 
     # Run post-deploy hook
-    run_post_deploy_hook
+    run_post_deploy_hook "$REMOTE_PATH"
 
     # Optionally configure Caddy
     if [ -n "$DOMAIN" ]; then
@@ -516,7 +516,7 @@ ENDSSH
 ENDSSH
 
     # Wait for app to start
-    sleep 3
+    sleep "${HEALTH_CHECK_STARTUP_DELAY:-3}"
 
     # Run health check if enabled
     local health_attempts=""
@@ -548,7 +548,7 @@ ENDSSH
     success "Release $timestamp deployed successfully (${deploy_duration}s)"
 
     # Run post-deploy hook
-    run_post_deploy_hook
+    run_post_deploy_hook "$release_path"
 
     # Cleanup old releases
     cleanup_old_releases
@@ -610,7 +610,7 @@ deploy_frontend_legacy() {
     fi
 
     # Run post-deploy hook
-    run_post_deploy_hook
+    run_post_deploy_hook "$REMOTE_PATH"
 }
 
 deploy_frontend_zero_downtime() {
@@ -654,7 +654,7 @@ deploy_frontend_zero_downtime() {
     success "Release $timestamp deployed successfully"
 
     # Run post-deploy hook
-    run_post_deploy_hook
+    run_post_deploy_hook "$release_path"
 
     # Cleanup old releases
     cleanup_old_releases
